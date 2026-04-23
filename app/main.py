@@ -1,11 +1,6 @@
 from fastapi import FastAPI
-from app.schemas import RequestInput
+from app.api.routes.clasificacion import router as clasificacion_router
 
-app = FastAPI()
+app = FastAPI(title="ABC Microservice")
 
-@app.post("/clasificar")
-def clasificar(data: RequestInput):
-    return {
-        "status": "ok",
-        "cantidad_productos": len(data.productos)
-    }
+app.include_router(clasificacion_router, prefix="/api")

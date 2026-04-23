@@ -1,10 +1,14 @@
-from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import List, Optional
+
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+
+ABC_VALIDAS = {"A", "B", "C"}
 
 
 class ProductoInput(BaseModel):
     """
-    Representa una publicación individual dentro del sistema.
+    Representa una publicación individual de entrada.
     """
 
     publication_id: str = Field(..., min_length=1)
@@ -13,16 +17,12 @@ class ProductoInput(BaseModel):
     precio_actual: float = Field(..., gt=0)
     stock_actual: int = Field(..., ge=0)
 
-    en_promocion: Optional[bool] = None
+    en_promocion: bool = False
     etiqueta_abc_opcional: Optional[str] = None
-
-    # -------------------------
-    # VALIDADORES DE CAMPO
-    # -------------------------
 
     @field_validator("publication_id")
     @classmethod
-    def limpiar_publication_id(cls, v: str) -> str:
+    def validar_publication_id(cls, v: str) -> str:
         v = v.strip()
         if not v:
             raise ValueError("publication_id no puede estar vacío")
@@ -30,44 +30,41 @@ class ProductoInput(BaseModel):
 
     @field_validator("etiqueta_abc_opcional")
     @classmethod
-    def validar_etiqueta(cls, v: Optional[str]) -> Optional[str]:
+    def validar_etiqueta_abc_opcional(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
-            return v
+            return None
 
         v = v.strip().upper()
 
-        if v == "":
+        if not v:
             return None
 
-        if v not in {"A", "B", "C"}:
+        if v not in ABC_VALIDAS:
             raise ValueError("etiqueta_abc_opcional debe ser A, B o C")
 
         return v
 
-    @field_validator("en_promocion")
-    @classmethod
-    def default_en_promocion(cls, v: Optional[bool]) -> bool:
-        # define comportamiento por defecto
-        return False if v is None else v
-
 
 class RequestInput(BaseModel):
     """
-    Representa la solicitud completa que contiene múltiples publicaciones.
+    Representa la solicitud completa de clasificación.
     """
 
     productos: List[ProductoInput] = Field(..., min_length=1)
 
-    # -------------------------
-    # VALIDADORES DE CONJUNTO
-    # -------------------------
-
     @model_validator(mode="after")
     def validar_unicidad_ids(self):
-        ids = [p.publication_id for p in self.productos]
-        duplicados = set([x for x in ids if ids.count(x) > 1])
+        ids = [producto.publication_id for producto in self.productos]
+        ids_vistos = set()
+        duplicados = set()
+
+        for publication_id in ids:
+            if publication_id in ids_vistos:
+                duplicados.add(publication_id)
+            ids_vistos.add(publication_id)
 
         if duplicados:
-            raise ValueError(f"publication_id duplicados: {duplicados}")
+            duplicados_str = ", ".join(sorted(duplicados))
+            raise ValueError(f"publication_id duplicados: {duplicados_str}")
 
         return self

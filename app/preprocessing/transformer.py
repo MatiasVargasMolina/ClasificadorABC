@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import Any, List
+from typing import Any, List, Tuple
 
 
 COLUMNAS_BASE = [
@@ -10,6 +10,14 @@ COLUMNAS_BASE = [
     "stock_actual",
     "en_promocion",
     "etiqueta_abc_opcional",
+]
+
+COLUMNAS_FEATURES = [
+    "ventas_30d",
+    "visitas_30d",
+    "precio_actual",
+    "stock_actual",
+    "en_promocion",
 ]
 
 
@@ -35,7 +43,7 @@ def transformar_productos(productos: List[Any]) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame(columns=COLUMNAS_BASE)
 
-    return df[COLUMNAS_BASE]
+    return df[COLUMNAS_BASE].copy()
 
 
 def transformar_variables(df: pd.DataFrame) -> pd.DataFrame:
@@ -54,20 +62,19 @@ def obtener_features_modelo(df: pd.DataFrame) -> pd.DataFrame:
     """
     Retorna solo las variables que entran al modelo.
     """
-    columnas_features = [
-        "ventas_30d",
-        "visitas_30d",
-        "precio_actual",
-        "stock_actual",
-        "en_promocion",
-    ]
-    return df[columnas_features].copy()
+    return df[COLUMNAS_FEATURES].copy()
 
 
-def preparar_datos_modelo(productos: List[Any]) -> pd.DataFrame:
+def preparar_datos_modelo(productos: List[Any]) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Flujo completo de transformación para el modelo.
+
+    Retorna:
+    - df_transformado: DataFrame completo transformado
+    - X: features que entran al modelo
     """
     df = transformar_productos(productos)
-    df = transformar_variables(df)
-    return df
+    df_transformado = transformar_variables(df)
+    X = obtener_features_modelo(df_transformado)
+
+    return df_transformado, X
