@@ -1,45 +1,47 @@
-from app.preprocessing.validator import validar_productos
-from app.preprocessing.transformer import preparar_datos_modelo
-from app.preprocessing.scaler import ajustar_y_transformar
+from app.services.preprocessing_service import ejecutar_preprocesamiento
+from app.services.kmeans_service import ejecutar_ss_kmeans
 
 
 def ejecutar_clasificacion(data):
-    """
-    Orquesta el flujo completo de preprocesamiento y deja
-    los datos listos para el clasificador.
-    """
+    resultado_preprocesamiento = ejecutar_preprocesamiento(data)
 
-    # 1. Los productos ya vienen validados estructuralmente
-    #    desde RequestInput (Pydantic)
-    productos = data.productos
-
-    # 2. Validación de reglas de negocio
-    resultado_validacion = validar_productos(productos)
-    productos_validos = resultado_validacion["validos"]
-    productos_invalidos = resultado_validacion["invalidos"]
-
-    # 3. Si no hay productos válidos, retornar respuesta controlada
-    if not productos_validos:
+    if not resultado_preprocesamiento["hay_validos"]:
         return {
+            "mensaje": resultado_preprocesamiento["mensaje"],
             "resultados": [],
-            "invalidos": productos_invalidos,
-            "mensaje": "No hay productos válidos para clasificar"
+            "productos_invalidos": resultado_preprocesamiento["productos_invalidos"],
         }
 
-    # 4. Transformación a DataFrame y extracción de features
-    df_transformado, X = preparar_datos_modelo(productos_validos)
+    # Extraer seed_labels de las etiquetas opcionales
+    productos_validos = resultado_preprocesamiento["productos_validos"]
+    seed_labels = [
+        producto.etiqueta_abc_opcional
+        for producto in productos_validos
+    ]
 
-    # 5. Escalado de features numéricas
-    X_escalado, scaler = ajustar_y_transformar(X)
+    # Ejecutar SSEKMeans
+    resultados_kmeans, diagnostico = ejecutar_ss_kmeans(
+        X_escalado=resultado_preprocesamiento["X_escalado"],
+        seed_labels=seed_labels,
+    )
 
-    # 6. Aquí luego irá tu clasificador
-    # categorias = clasificar_productos(X_escalado)
+    # Combinar resultados con índices originales
+    df_resultados = resultado_preprocesamiento["df_transformado"].copy()
+    df_resultados["categoria"] = resultados_kmeans["categoria"].values
+    df_resultados["score_inicial"] = resultados_kmeans["score_inicial"].values
+    df_resultados["es_semilla"] = resultados_kmeans["es_semilla"].values
 
-    # De momento devolvemos datos intermedios para probar el flujo
     return {
-        "mensaje": "Preprocesamiento ejecutado correctamente",
-        "productos_validos": len(productos_validos),
-        "productos_invalidos": productos_invalidos,
-        "df_transformado": df_transformado.to_dict(orient="records"),
-        "X_escalado": X_escalado.to_dict(orient="records")
+        "mensaje": "Clasificación ejecutada correctamente",
+        "productos_validos": len(resultado_preprocesamiento["productos_validos"]),
+        "productos_invalidos": resultado_preprocesamiento["productos_invalidos"],
+        "resultados": df_resultados.to_dict(orient="records"),
+        "diagnostico": {
+            "capacidades_objetivo": diagnostico["capacidades_objetivo"],
+            "conteos_finales": diagnostico["conteos_finales"],
+            "semillas_usadas": diagnostico["semillas_usadas"],
+            "iteraciones": diagnostico["iteraciones"],
+            "inertia": diagnostico["inertia"],
+            "metricas": diagnostico["metricas"],
+        },
     }
