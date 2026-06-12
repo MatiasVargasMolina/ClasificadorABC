@@ -1,0 +1,12 @@
+services:
+  autosklearn-worker:
+    build:
+      context: .
+      dockerfile: autosklearn_worker/Dockerfile
+    container_name: autosklearn-worker
+    ports:
+      - "8010:8010"
+    volumes:
+      - ./artifacts/autosklearn:/artifacts
+    environment:
+      - ARTIFACT_DIR=/artifacts
