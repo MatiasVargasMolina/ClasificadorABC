@@ -1,2 +1,45 @@
+# Python
 __pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+.venv/
+venv/
+env/
+
+# Environment variables
 .env
+.env.*
+
+# Pytest
+.pytest_cache/
+
+# Coverage
+.coverage
+htmlcov/
+
+# VS Code
+.vscode/
+
+# JetBrains
+.idea/
+
+# Logs
+*.log
+
+# SQLite
+*.db
+*.sqlite3
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# AutoSklearn artifacts (opcional)
+artifacts/autosklearn/*.joblib
