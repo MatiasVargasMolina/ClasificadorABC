@@ -18,7 +18,7 @@ class ProductoInput(BaseModel):
     stock_actual: int = Field(..., ge=0)
 
     en_promocion: bool = False
-    etiqueta_abc_opcional: Optional[str] = None
+    #etiqueta_abc_opcional: Optional[str] = None
 
     @field_validator("publication_id")
     @classmethod
@@ -28,7 +28,7 @@ class ProductoInput(BaseModel):
             raise ValueError("publication_id no puede estar vacío")
         return v
 
-    @field_validator("etiqueta_abc_opcional")
+    """@field_validator("etiqueta_abc_opcional")
     @classmethod
     def validar_etiqueta_abc_opcional(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
@@ -43,7 +43,7 @@ class ProductoInput(BaseModel):
             raise ValueError("etiqueta_abc_opcional debe ser A, B o C")
 
         return v
-
+"""
 
 class RequestInput(BaseModel):
     """

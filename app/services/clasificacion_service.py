@@ -12,24 +12,15 @@ def ejecutar_clasificacion(data):
             "productos_invalidos": resultado_preprocesamiento["productos_invalidos"],
         }
 
-    # Extraer seed_labels de las etiquetas opcionales
-    productos_validos = resultado_preprocesamiento["productos_validos"]
-    seed_labels = [
-        producto.etiqueta_abc_opcional
-        for producto in productos_validos
-    ]
-
-    # Ejecutar SSEKMeans
+    # Ejecutar SSEKMeans sin semillas
     resultados_kmeans, diagnostico = ejecutar_ss_kmeans(
-        X_escalado=resultado_preprocesamiento["X_escalado"],
-        seed_labels=seed_labels,
+        X=resultado_preprocesamiento["X_modelo"],
     )
 
-    # Combinar resultados con índices originales
+    # Combinar resultados con datos originales transformados
     df_resultados = resultado_preprocesamiento["df_transformado"].copy()
     df_resultados["categoria"] = resultados_kmeans["categoria"].values
     df_resultados["score_inicial"] = resultados_kmeans["score_inicial"].values
-    df_resultados["es_semilla"] = resultados_kmeans["es_semilla"].values
 
     return {
         "mensaje": "Clasificación ejecutada correctamente",
@@ -39,7 +30,6 @@ def ejecutar_clasificacion(data):
         "diagnostico": {
             "capacidades_objetivo": diagnostico["capacidades_objetivo"],
             "conteos_finales": diagnostico["conteos_finales"],
-            "semillas_usadas": diagnostico["semillas_usadas"],
             "iteraciones": diagnostico["iteraciones"],
             "inertia": diagnostico["inertia"],
             "metricas": diagnostico["metricas"],

@@ -3,12 +3,11 @@ from app.ml.metrics.clustering_metrics import evaluate_internal_metrics
 
 
 def ejecutar_ss_kmeans(
-    X_escalado,
-    seed_labels=None,
+    X,
     proportions=None,
 ):
     modelo = SSEKMeans(
-        proportions={
+        proportions=proportions or {
             "A": 0.20,
             "B": 0.30,
             "C": 0.50,
@@ -20,20 +19,16 @@ def ejecutar_ss_kmeans(
         shuffle_unlabeled=False,
     )
 
-    resultados = modelo.fit_predict(
-        X_escalado,
-        seed_labels=seed_labels,
-    )
+    resultados = modelo.fit_predict(X)
 
     metricas = evaluate_internal_metrics(
-        X_escalado,
+        X,
         resultados["categoria"],
     )
 
     diagnostico = {
         "capacidades_objetivo": modelo.capacities_,
         "conteos_finales": modelo.counts_,
-        "semillas_usadas": modelo.seed_counts_,
         "iteraciones": modelo.n_iter_,
         "inertia": modelo.inertia_,
         "metricas": metricas,

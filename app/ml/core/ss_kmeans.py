@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-from typing import Dict, Mapping, Optional, Sequence
+from typing import Dict, Mapping, Optional
 
 import numpy as np
 import pandas as pd
 
 from app.ml.assignment.constrained_assignment import assign_with_capacity
-from app.ml.constraints.capacity_constraint import (
-    compute_capacities,
-    validate_seed_capacity,
-)
+from app.ml.constraints.capacity_constraint import compute_capacities
 from app.ml.core.config import SSEKMeansConfig
 from app.ml.core.types import LABELS_ABC, RunResult
 from app.ml.initialization.centroid_initializer import (
@@ -19,10 +16,6 @@ from app.ml.initialization.centroid_initializer import (
 from app.ml.metrics.clustering_metrics import (
     compute_cluster_counts,
     compute_inertia,
-)
-from app.ml.semi_supervision.seed_handler import (
-    count_seed_labels,
-    normalize_seed_labels,
 )
 from app.ml.update.centroid_update import (
     compute_center_shift,
@@ -71,34 +64,18 @@ class SSEKMeans:
         self.n_iter_: Optional[int] = None
         self.capacities_: Optional[Dict[str, int]] = None
         self.counts_: Optional[Dict[str, int]] = None
-        self.seed_counts_: Optional[Dict[str, int]] = None
         self.score_: Optional[pd.Series] = None
-        self.is_seed_: Optional[pd.Series] = None
         self.results_: Optional[pd.DataFrame] = None
 
     def fit(
         self,
         X: pd.DataFrame,
-        seed_labels: Optional[Sequence[object]] = None,
     ) -> "SSEKMeans":
         X_df = self._validate_X(X)
-
-        seed_series = normalize_seed_labels(
-            seed_labels,
-            index=X_df.index,
-        )
 
         capacities = compute_capacities(
             n_samples=len(X_df),
             proportions=self.proportions,
-            labels=LABELS_ABC,
-        )
-
-        seed_counts = count_seed_labels(seed_series)
-
-        validate_seed_capacity(
-            seed_counts=seed_counts,
-            capacities=capacities,
             labels=LABELS_ABC,
         )
 
@@ -115,7 +92,6 @@ class SSEKMeans:
 
             run = self._fit_single_run(
                 X=X_df,
-                seed_labels=seed_series,
                 scores=scores,
                 capacities=capacities,
                 rng=run_rng,
@@ -127,16 +103,15 @@ class SSEKMeans:
         if best_run is None:
             raise RuntimeError("No se pudo ejecutar ninguna corrida del modelo.")
 
-        self._save_best_run(best_run, seed_counts)
+        self._save_best_run(best_run)
 
         return self
 
     def fit_predict(
         self,
         X: pd.DataFrame,
-        seed_labels: Optional[Sequence[object]] = None,
     ) -> pd.DataFrame:
-        self.fit(X, seed_labels=seed_labels)
+        self.fit(X)
 
         if self.results_ is None:
             raise RuntimeError("El modelo no generó resultados.")
@@ -146,14 +121,12 @@ class SSEKMeans:
     def _fit_single_run(
         self,
         X: pd.DataFrame,
-        seed_labels: pd.Series,
         scores: pd.Series,
         capacities: Dict[str, int],
         rng: np.random.Generator,
     ) -> RunResult:
         centers = initialize_centroids(
             X=X,
-            seed_labels=seed_labels,
             scores=scores,
             rng=rng,
         )
@@ -162,15 +135,13 @@ class SSEKMeans:
         objective_history: list[float] = []
 
         last_labels: Optional[pd.Series] = None
-        last_is_seed: Optional[pd.Series] = None
         last_iteration = 0
 
         for iteration in range(1, self.max_iter + 1):
-            labels, is_seed = assign_with_capacity(
+            labels = assign_with_capacity(
                 X=X,
                 centers=centers,
                 capacities=capacities,
-                seed_labels=seed_labels,
                 rng=rng,
                 shuffle_unlabeled=self.shuffle_unlabeled,
             )
@@ -208,7 +179,6 @@ class SSEKMeans:
             centers = new_centers
             previous_labels = labels
             last_labels = labels
-            last_is_seed = is_seed
             last_iteration = iteration
 
             if (
@@ -218,7 +188,7 @@ class SSEKMeans:
             ):
                 break
 
-        if last_labels is None or last_is_seed is None or not objective_history:
+        if last_labels is None or not objective_history:
             raise RuntimeError("La corrida del modelo no generó resultados válidos.")
 
         counts = compute_cluster_counts(last_labels)
@@ -232,13 +202,11 @@ class SSEKMeans:
             capacities=dict(capacities),
             counts=counts,
             scores=scores.copy(),
-            is_seed=last_is_seed,
         )
 
     def _save_best_run(
         self,
         best_run: RunResult,
-        seed_counts: Dict[str, int],
     ) -> None:
         self.labels_ = best_run.labels
         self.cluster_centers_ = best_run.centers
@@ -247,9 +215,7 @@ class SSEKMeans:
         self.n_iter_ = best_run.n_iter
         self.capacities_ = best_run.capacities
         self.counts_ = best_run.counts
-        self.seed_counts_ = seed_counts
         self.score_ = best_run.scores
-        self.is_seed_ = best_run.is_seed
         self.results_ = self._build_results(best_run)
 
     def _validate_parameters(self) -> None:
@@ -344,7 +310,6 @@ class SSEKMeans:
                 "categoria": run.labels,
                 "cluster": run.labels.map(cluster_map).astype(int),
                 "score_inicial": run.scores,
-                "es_semilla": run.is_seed.astype(bool),
             },
             index=run.labels.index,
         )

@@ -1,4 +1,5 @@
 from typing import Dict, Mapping, Sequence
+
 import numpy as np
 
 LABELS_ABC = ("A", "B", "C")
@@ -49,27 +50,3 @@ def compute_capacities(
             capacities[label] += 1
 
     return capacities
-
-
-def validate_seed_capacity(
-    seed_counts: Dict[str, int],
-    capacities: Dict[str, int],
-    labels: Sequence[str] = LABELS_ABC,
-) -> None:
-    invalid = {}
-
-    for label in labels:
-        seeds = seed_counts.get(label, 0)
-        capacity = capacities.get(label, 0)
-
-        if seeds > capacity:
-            invalid[label] = {
-                "semillas": seeds,
-                "capacidad": capacity,
-            }
-
-    if invalid:
-        raise ValueError(
-            "Las semillas exceden la capacidad permitida del cluster: "
-            f"{invalid}"
-        )

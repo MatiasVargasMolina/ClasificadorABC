@@ -19,4 +19,3 @@ class RunResult:
     capacities: Dict[str, int]
     counts: Dict[str, int]
     scores: pd.Series
-    is_seed: pd.Series

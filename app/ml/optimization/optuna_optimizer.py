@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict
 
 import optuna
 import pandas as pd
@@ -12,14 +12,12 @@ from app.ml.core.ss_kmeans import SSEKMeans
 
 def optimize_sse_kmeans(
     X: pd.DataFrame,
-    seed_labels: Optional[Sequence[object]] = None,
     n_trials: int = 30,
     random_state: int = 42,
 ) -> Dict[str, Any]:
 
     def objective(trial: optuna.Trial) -> float:
         n_init = trial.suggest_int("n_init", 2, 15)
-
         max_iter = trial.suggest_int("max_iter", 50, 300)
 
         tol = trial.suggest_float(
@@ -63,10 +61,7 @@ def optimize_sse_kmeans(
 
         start = time.perf_counter()
 
-        result = model.fit_predict(
-            X,
-            seed_labels=seed_labels,
-        )
+        result = model.fit_predict(X)
 
         elapsed = time.perf_counter() - start
 
@@ -103,9 +98,7 @@ def optimize_sse_kmeans(
 
         return float(score_final)
 
-    study = optuna.create_study(
-        direction="maximize",
-    )
+    study = optuna.create_study(direction="maximize")
 
     study.optimize(
         objective,
