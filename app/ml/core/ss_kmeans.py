@@ -1,47 +1,33 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Dict, List, Mapping, Optional, Sequence
+from typing import Dict, Mapping, Optional, Sequence
 
 import numpy as np
 import pandas as pd
 
+from app.ml.assignment.constrained_assignment import assign_with_capacity
 from app.ml.constraints.capacity_constraint import (
     compute_capacities,
     validate_seed_capacity,
 )
-from app.ml.semi_supervision.seed_handler import (
-    normalize_seed_labels,
-    count_seed_labels,
-)
+from app.ml.core.config import SSEKMeansConfig
+from app.ml.core.types import LABELS_ABC, RunResult
 from app.ml.initialization.centroid_initializer import (
     compute_initial_score,
     initialize_centroids,
 )
-from app.ml.assignment.constrained_assignment import assign_with_capacity
-from app.ml.update.centroid_update import (
-    recompute_centroids,
-    compute_center_shift,
-)
 from app.ml.metrics.clustering_metrics import (
-    compute_inertia,
     compute_cluster_counts,
+    compute_inertia,
 )
-
-LABELS_ABC = ("A", "B", "C")
-
-
-@dataclass(frozen=True)
-class RunResult:
-    labels: pd.Series
-    centers: pd.DataFrame
-    inertia: float
-    objective_history: List[float]
-    n_iter: int
-    capacities: Dict[str, int]
-    counts: Dict[str, int]
-    scores: pd.Series
-    is_seed: pd.Series
+from app.ml.semi_supervision.seed_handler import (
+    count_seed_labels,
+    normalize_seed_labels,
+)
+from app.ml.update.centroid_update import (
+    compute_center_shift,
+    recompute_centroids,
+)
 
 
 class SSEKMeans:
@@ -53,23 +39,35 @@ class SSEKMeans:
         n_init: int = 5,
         random_state: Optional[int] = 42,
         shuffle_unlabeled: bool = True,
+        config: Optional[SSEKMeansConfig] = None,
     ) -> None:
-        self.proportions = proportions or {
-            "A": 0.20,
-            "B": 0.30,
-            "C": 0.50,
-        }
+        if config is not None:
+            self.proportions = dict(config.proportions)
+            self.max_iter = config.max_iter
+            self.tol = config.tol
+            self.n_init = config.n_init
+            self.random_state = config.random_state
+            self.shuffle_unlabeled = config.shuffle_unlabeled
+        else:
+            self.proportions = dict(
+                proportions or {
+                    "A": 0.20,
+                    "B": 0.30,
+                    "C": 0.50,
+                }
+            )
+            self.max_iter = max_iter
+            self.tol = tol
+            self.n_init = n_init
+            self.random_state = random_state
+            self.shuffle_unlabeled = shuffle_unlabeled
 
-        self.max_iter = max_iter
-        self.tol = tol
-        self.n_init = n_init
-        self.random_state = random_state
-        self.shuffle_unlabeled = shuffle_unlabeled
+        self._validate_parameters()
 
         self.labels_: Optional[pd.Series] = None
         self.cluster_centers_: Optional[pd.DataFrame] = None
         self.inertia_: Optional[float] = None
-        self.objective_history_: Optional[List[float]] = None
+        self.objective_history_: Optional[list[float]] = None
         self.n_iter_: Optional[int] = None
         self.capacities_: Optional[Dict[str, int]] = None
         self.counts_: Optional[Dict[str, int]] = None
@@ -108,9 +106,9 @@ class SSEKMeans:
 
         rng = np.random.default_rng(self.random_state)
 
-        best_run = None
+        best_run: Optional[RunResult] = None
 
-        for _ in range(max(1, self.n_init)):
+        for _ in range(self.n_init):
             run_rng = np.random.default_rng(
                 rng.integers(0, np.iinfo(np.int32).max)
             )
@@ -125,6 +123,9 @@ class SSEKMeans:
 
             if best_run is None or run.inertia < best_run.inertia:
                 best_run = run
+
+        if best_run is None:
+            raise RuntimeError("No se pudo ejecutar ninguna corrida del modelo.")
 
         self._save_best_run(best_run, seed_counts)
 
@@ -157,8 +158,12 @@ class SSEKMeans:
             rng=rng,
         )
 
-        previous_labels = None
-        objective_history = []
+        previous_labels: Optional[pd.Series] = None
+        objective_history: list[float] = []
+
+        last_labels: Optional[pd.Series] = None
+        last_is_seed: Optional[pd.Series] = None
+        last_iteration = 0
 
         for iteration in range(1, self.max_iter + 1):
             labels, is_seed = assign_with_capacity(
@@ -182,7 +187,7 @@ class SSEKMeans:
                 centers=new_centers,
             )
 
-            objective_history.append(inertia)
+            objective_history.append(float(inertia))
 
             labels_stable = (
                 previous_labels is not None
@@ -202,22 +207,32 @@ class SSEKMeans:
 
             centers = new_centers
             previous_labels = labels
+            last_labels = labels
+            last_is_seed = is_seed
+            last_iteration = iteration
 
-            if labels_stable or center_shift <= self.tol or improvement <= self.tol:
+            if (
+                labels_stable
+                or center_shift <= self.tol
+                or improvement <= self.tol
+            ):
                 break
 
-        counts = compute_cluster_counts(labels)
+        if last_labels is None or last_is_seed is None or not objective_history:
+            raise RuntimeError("La corrida del modelo no generó resultados válidos.")
+
+        counts = compute_cluster_counts(last_labels)
 
         return RunResult(
-            labels=labels,
+            labels=last_labels,
             centers=centers,
             inertia=float(objective_history[-1]),
             objective_history=objective_history,
-            n_iter=iteration,
+            n_iter=last_iteration,
             capacities=dict(capacities),
             counts=counts,
             scores=scores.copy(),
-            is_seed=is_seed,
+            is_seed=last_is_seed,
         )
 
     def _save_best_run(
@@ -236,6 +251,58 @@ class SSEKMeans:
         self.score_ = best_run.scores
         self.is_seed_ = best_run.is_seed
         self.results_ = self._build_results(best_run)
+
+    def _validate_parameters(self) -> None:
+        if self.max_iter < 1:
+            raise ValueError("max_iter debe ser mayor o igual a 1.")
+
+        if self.n_init < 1:
+            raise ValueError("n_init debe ser mayor o igual a 1.")
+
+        if self.tol < 0:
+            raise ValueError("tol debe ser mayor o igual a 0.")
+
+        missing_labels = [
+            label for label in LABELS_ABC
+            if label not in self.proportions
+        ]
+
+        if missing_labels:
+            raise ValueError(
+                "Faltan proporciones para las siguientes categorías: "
+                f"{missing_labels}"
+            )
+
+        invalid_labels = [
+            label for label in self.proportions
+            if label not in LABELS_ABC
+        ]
+
+        if invalid_labels:
+            raise ValueError(
+                "Se recibieron categorías inválidas en proportions: "
+                f"{invalid_labels}. Las categorías válidas son {LABELS_ABC}."
+            )
+
+        invalid_values = {
+            label: value
+            for label, value in self.proportions.items()
+            if value < 0
+        }
+
+        if invalid_values:
+            raise ValueError(
+                "Las proporciones no pueden ser negativas. "
+                f"Valores inválidos: {invalid_values}"
+            )
+
+        total = sum(self.proportions.values())
+
+        if not np.isclose(total, 1.0):
+            raise ValueError(
+                "Las proporciones deben sumar 1.0. "
+                f"Suma actual: {total}"
+            )
 
     @staticmethod
     def _validate_X(X: pd.DataFrame) -> pd.DataFrame:
