@@ -9,8 +9,8 @@ COLUMNAS_BASE = [
     "precio_actual",
     "stock_actual",
     "en_promocion",
-    "etiqueta_abc_opcional",
 ]
+
 
 COLUMNAS_FEATURES = [
     "ventas_30d",
@@ -29,7 +29,6 @@ def producto_a_dict(producto: Any) -> dict:
         "precio_actual": producto.precio_actual,
         "stock_actual": producto.stock_actual,
         "en_promocion": producto.en_promocion,
-        "etiqueta_abc_opcional": producto.etiqueta_abc_opcional,
     }
 
 
@@ -65,7 +64,9 @@ def obtener_features_modelo(df: pd.DataFrame) -> pd.DataFrame:
     return df[COLUMNAS_FEATURES].copy()
 
 
-def preparar_datos_modelo(productos: List[Any]) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def preparar_datos_modelo(
+    productos: List[Any],
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Flujo completo de transformación para el modelo.
 

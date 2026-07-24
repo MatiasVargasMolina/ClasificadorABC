@@ -2,6 +2,8 @@ from typing import Dict
 
 import numpy as np
 import pandas as pd
+from scipy.optimize import linear_sum_assignment
+
 
 LABELS_ABC = ("A", "B", "C")
 
@@ -11,16 +13,16 @@ def compute_distance_matrix(
     centers: pd.DataFrame,
 ) -> pd.DataFrame:
     x = X.to_numpy(dtype=float)
-    c = centers.to_numpy(dtype=float)
+    c = centers.loc[list(LABELS_ABC)].to_numpy(dtype=float)
 
-    distances = np.sqrt(
-        ((x[:, None, :] - c[None, :, :]) ** 2).sum(axis=2)
-    )
+    squared_distances = (
+        (x[:, None, :] - c[None, :, :]) ** 2
+    ).sum(axis=2)
 
     return pd.DataFrame(
-        distances,
+        squared_distances,
         index=X.index,
-        columns=centers.index,
+        columns=LABELS_ABC,
     )
 
 
@@ -31,61 +33,91 @@ def assign_with_capacity(
     rng: np.random.Generator,
     shuffle_unlabeled: bool = True,
 ) -> pd.Series:
-    labels = pd.Series(index=X.index, dtype="object")
-    counts = {label: 0 for label in LABELS_ABC}
+    del rng
+    del shuffle_unlabeled
 
-    # 1. Calcular distancias de todos los productos a cada centroide
-    dist_df = compute_distance_matrix(
+    total_capacity = sum(
+        capacities[label]
+        for label in LABELS_ABC
+    )
+
+    if total_capacity != len(X):
+        raise ValueError(
+            "La suma de las capacidades debe coincidir con "
+            f"la cantidad de observaciones. Capacidad={total_capacity}, "
+            f"observaciones={len(X)}."
+        )
+
+    distance_matrix = compute_distance_matrix(
         X=X,
         centers=centers,
     )
 
-    # 2. Barajar para que n_init pueda generar corridas distintas
-    if shuffle_unlabeled:
-        shuffled_idx = np.array(X.index.to_list(), dtype=object)
-        rng.shuffle(shuffled_idx)
-        dist_df = dist_df.loc[list(shuffled_idx)]
+    slot_labels: list[str] = []
 
-    # 3. Priorizar puntos con asignación más clara
-    distances = dist_df.to_numpy(dtype=float)
-    ranked = np.sort(distances, axis=1)
+    for label in LABELS_ABC:
+        capacity = capacities.get(label)
 
-    best = ranked[:, 0]
-    second = ranked[:, 1] if ranked.shape[1] > 1 else ranked[:, 0]
+        if capacity is None:
+            raise ValueError(
+                f"No se encontró capacidad para la categoría {label}."
+            )
 
-    priority = pd.DataFrame(
-        {
-            "best": best,
-            "confidence": second - best,
-        },
-        index=dist_df.index,
-    ).sort_values(
-        by=["confidence", "best"],
-        ascending=[False, True],
+        if capacity < 0:
+            raise ValueError(
+                f"La capacidad de {label} no puede ser negativa."
+            )
+
+        slot_labels.extend([label] * capacity)
+
+    slot_positions = np.array(
+        [
+            LABELS_ABC.index(label)
+            for label in slot_labels
+        ],
+        dtype=int,
     )
 
-    # 4. Asignar respetando capacidades ABC
-    for idx in priority.index:
-        sorted_labels = (
-            dist_df
-            .loc[idx]
-            .sort_values(kind="mergesort")
-            .index
-            .tolist()
+    cost_matrix = (
+        distance_matrix
+        .loc[:, list(LABELS_ABC)]
+        .to_numpy(dtype=float)[:, slot_positions]
+    )
+
+    row_indices, column_indices = linear_sum_assignment(
+        cost_matrix
+    )
+
+    if len(row_indices) != len(X):
+        raise RuntimeError(
+            "No fue posible asignar todas las observaciones "
+            "respetando las capacidades."
         )
 
-        assigned = False
+    labels = pd.Series(
+        index=X.index,
+        dtype="object",
+    )
 
-        for label in sorted_labels:
-            if counts[label] < capacities[label]:
-                labels.at[idx] = label
-                counts[label] += 1
-                assigned = True
-                break
+    for row_position, column_position in zip(
+        row_indices,
+        column_indices,
+    ):
+        labels.iloc[row_position] = slot_labels[column_position]
 
-        if not assigned:
+    if labels.isna().any():
+        raise RuntimeError(
+            "La asignación produjo observaciones sin categoría."
+        )
+
+    counts = labels.value_counts().to_dict()
+
+    for label in LABELS_ABC:
+        if counts.get(label, 0) != capacities[label]:
             raise RuntimeError(
-                "No fue posible asignar una observación respetando capacidades."
+                "La asignación no respetó la capacidad de "
+                f"{label}: esperado={capacities[label]}, "
+                f"obtenido={counts.get(label, 0)}."
             )
 
     return labels.astype(str)

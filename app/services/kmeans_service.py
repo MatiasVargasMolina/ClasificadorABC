@@ -12,8 +12,8 @@ def ejecutar_ss_kmeans(
             "B": 0.30,
             "C": 0.50,
         },
-        max_iter=188,
-        tol=0.007078716425305124,
+        max_iter=300,
+        tol=1e-4,
         n_init=5,
         random_state=42,
         shuffle_unlabeled=False,
@@ -31,6 +31,10 @@ def ejecutar_ss_kmeans(
         "conteos_finales": modelo.counts_,
         "iteraciones": modelo.n_iter_,
         "inertia": modelo.inertia_,
+        "convergio": modelo.converged_,
+        "motivo_termino": modelo.stop_reason_,
+        "corridas_convergentes": modelo.converged_runs_,
+        "corridas_descartadas": modelo.discarded_runs_,
         "metricas": metricas,
     }
 

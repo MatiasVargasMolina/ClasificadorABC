@@ -29,7 +29,7 @@ class SSEKMeans:
         proportions: Optional[Mapping[str, float]] = None,
         max_iter: int = 300,
         tol: float = 1e-4,
-        n_init: int = 5,
+        n_init: int = 50,
         random_state: Optional[int] = 42,
         shuffle_unlabeled: bool = True,
         config: Optional[SSEKMeansConfig] = None,
@@ -67,6 +67,11 @@ class SSEKMeans:
         self.score_: Optional[pd.Series] = None
         self.results_: Optional[pd.DataFrame] = None
 
+        self.converged_: Optional[bool] = None
+        self.stop_reason_: Optional[str] = None
+        self.converged_runs_: int = 0
+        self.discarded_runs_: int = 0
+
     def fit(
         self,
         X: pd.DataFrame,
@@ -80,10 +85,9 @@ class SSEKMeans:
         )
 
         scores = compute_initial_score(X_df)
-
         rng = np.random.default_rng(self.random_state)
 
-        best_run: Optional[RunResult] = None
+        runs: list[RunResult] = []
 
         for _ in range(self.n_init):
             run_rng = np.random.default_rng(
@@ -97,11 +101,32 @@ class SSEKMeans:
                 rng=run_rng,
             )
 
-            if best_run is None or run.inertia < best_run.inertia:
-                best_run = run
+            runs.append(run)
 
-        if best_run is None:
-            raise RuntimeError("No se pudo ejecutar ninguna corrida del modelo.")
+        converged_runs = [
+            run
+            for run in runs
+            if run.converged
+        ]
+
+        self.converged_runs_ = len(converged_runs)
+        self.discarded_runs_ = len(runs) - len(converged_runs)
+
+        if not converged_runs:
+            reasons = ", ".join(
+                run.stop_reason
+                for run in runs
+            )
+
+            raise RuntimeError(
+                "Ninguna inicialización alcanzó una solución estable. "
+                f"Motivos de término: {reasons}"
+            )
+
+        best_run = min(
+            converged_runs,
+            key=lambda run: run.inertia,
+        )
 
         self._save_best_run(best_run)
 
@@ -125,17 +150,27 @@ class SSEKMeans:
         capacities: Dict[str, int],
         rng: np.random.Generator,
     ) -> RunResult:
+        seed_labels = pd.Series(
+            index=X.index,
+            dtype="object",
+        )
+
         centers = initialize_centroids(
             X=X,
+            seed_labels=seed_labels,
             scores=scores,
             rng=rng,
         )
 
         previous_labels: Optional[pd.Series] = None
+        labels_two_iterations_ago: Optional[pd.Series] = None
         objective_history: list[float] = []
 
         last_labels: Optional[pd.Series] = None
         last_iteration = 0
+
+        converged = False
+        stop_reason = "max_iter"
 
         for iteration in range(1, self.max_iter + 1):
             labels = assign_with_capacity(
@@ -165,6 +200,12 @@ class SSEKMeans:
                 and labels.equals(previous_labels)
             )
 
+            cycle_period_2 = (
+                labels_two_iterations_ago is not None
+                and labels.equals(labels_two_iterations_ago)
+                and not labels_stable
+            )
+
             center_shift = compute_center_shift(
                 old_centers=centers,
                 new_centers=new_centers,
@@ -173,23 +214,47 @@ class SSEKMeans:
             improvement = (
                 float("inf")
                 if len(objective_history) == 1
-                else abs(objective_history[-2] - objective_history[-1])
+                else abs(
+                    objective_history[-2]
+                    - objective_history[-1]
+                )
             )
 
+            last_labels = labels.copy()
             centers = new_centers
-            previous_labels = labels
-            last_labels = labels
             last_iteration = iteration
 
-            if (
-                labels_stable
-                or center_shift <= self.tol
-                or improvement <= self.tol
-            ):
+            if labels_stable:
+                converged = True
+                stop_reason = "labels_stable"
+
+            elif cycle_period_2:
+                converged = False
+                stop_reason = "period_2_cycle"
+
+            elif center_shift <= self.tol:
+                converged = True
+                stop_reason = "center_shift"
+
+            elif improvement <= self.tol:
+                converged = True
+                stop_reason = "objective_improvement"
+
+            labels_two_iterations_ago = (
+                previous_labels.copy()
+                if previous_labels is not None
+                else None
+            )
+
+            previous_labels = labels.copy()
+
+            if converged or cycle_period_2:
                 break
 
         if last_labels is None or not objective_history:
-            raise RuntimeError("La corrida del modelo no generó resultados válidos.")
+            raise RuntimeError(
+                "La corrida del modelo no generó resultados válidos."
+            )
 
         counts = compute_cluster_counts(last_labels)
 
@@ -202,6 +267,8 @@ class SSEKMeans:
             capacities=dict(capacities),
             counts=counts,
             scores=scores.copy(),
+            converged=converged,
+            stop_reason=stop_reason,
         )
 
     def _save_best_run(
@@ -217,6 +284,8 @@ class SSEKMeans:
         self.counts_ = best_run.counts
         self.score_ = best_run.scores
         self.results_ = self._build_results(best_run)
+        self.converged_ = best_run.converged
+        self.stop_reason_ = best_run.stop_reason
 
     def _validate_parameters(self) -> None:
         if self.max_iter < 1:
@@ -229,7 +298,8 @@ class SSEKMeans:
             raise ValueError("tol debe ser mayor o igual a 0.")
 
         missing_labels = [
-            label for label in LABELS_ABC
+            label
+            for label in LABELS_ABC
             if label not in self.proportions
         ]
 
@@ -240,7 +310,8 @@ class SSEKMeans:
             )
 
         invalid_labels = [
-            label for label in self.proportions
+            label
+            for label in self.proportions
             if label not in LABELS_ABC
         ]
 
@@ -279,7 +350,8 @@ class SSEKMeans:
             raise ValueError("X no puede estar vacío.")
 
         non_numeric = [
-            col for col in X.columns
+            col
+            for col in X.columns
             if not pd.api.types.is_numeric_dtype(X[col])
         ]
 

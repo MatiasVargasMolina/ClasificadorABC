@@ -1,14 +1,13 @@
 from app.preprocessing.validator import validar_productos
 from app.preprocessing.transformer import preparar_datos_modelo
-from app.preprocessing.scaler import normalizar_minmax
+from app.preprocessing.scaler import ajustar_y_transformar
 
 
 def ejecutar_preprocesamiento(data):
     """
     Orquesta el flujo completo de preprocesamiento:
-    validación de negocio, transformación y normalización.
+    validación de negocio, transformación y estandarización.
     """
-
     productos = data.productos
 
     resultado_validacion = validar_productos(productos)
@@ -28,9 +27,11 @@ def ejecutar_preprocesamiento(data):
             "normalizacion": None,
         }
 
-    df_transformado, X = preparar_datos_modelo(productos_validos)
+    df_transformado, X = preparar_datos_modelo(
+        productos_validos
+    )
 
-    X_modelo, normalizacion = normalizar_minmax(X)
+    X_modelo, scaler = ajustar_y_transformar(X)
 
     return {
         "hay_validos": True,
@@ -40,5 +41,5 @@ def ejecutar_preprocesamiento(data):
         "df_transformado": df_transformado,
         "X": X,
         "X_modelo": X_modelo,
-        "normalizacion": normalizacion,
+        "normalizacion": scaler,
     }

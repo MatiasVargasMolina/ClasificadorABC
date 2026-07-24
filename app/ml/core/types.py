@@ -19,3 +19,5 @@ class RunResult:
     capacities: Dict[str, int]
     counts: Dict[str, int]
     scores: pd.Series
+    converged: bool
+    stop_reason: str

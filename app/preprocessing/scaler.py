@@ -1,9 +1,10 @@
-from typing import Dict, Tuple
+from typing import Tuple
 
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
 
 
-COLUMNAS_NORMALIZABLES = [
+COLUMNAS_ESCALABLES = [
     "ventas_30d",
     "visitas_30d",
     "precio_actual",
@@ -13,47 +14,62 @@ COLUMNAS_NORMALIZABLES = [
 
 def validar_columnas(df_features: pd.DataFrame) -> None:
     faltantes = [
-        col for col in COLUMNAS_NORMALIZABLES
+        col
+        for col in COLUMNAS_ESCALABLES
         if col not in df_features.columns
     ]
 
     if faltantes:
-        raise ValueError(f"Faltan columnas para normalizar: {faltantes}")
+        raise ValueError(
+            f"Faltan columnas para escalar: {faltantes}"
+        )
 
 
-def normalizar_minmax(
+def ajustar_scaler(
     df_features: pd.DataFrame,
-) -> Tuple[pd.DataFrame, Dict[str, Dict[str, float]]]:
+) -> StandardScaler:
     """
-    Normaliza variables numéricas usando Min-Max.
-
-    Fórmula:
-        x_norm = (x - min) / (max - min)
-
-    Si una columna tiene rango 0, se deja en 0.0 para evitar división por cero.
+    Ajusta un StandardScaler usando las variables numéricas escalables.
     """
-
     validar_columnas(df_features)
 
-    df_normalizado = df_features.copy()
-    stats: Dict[str, Dict[str, float]] = {}
+    scaler = StandardScaler()
+    scaler.fit(
+        df_features[COLUMNAS_ESCALABLES].astype(float)
+    )
 
-    for col in COLUMNAS_NORMALIZABLES:
-        col_min = float(df_normalizado[col].min())
-        col_max = float(df_normalizado[col].max())
-        col_range = col_max - col_min
+    return scaler
 
-        if col_range == 0:
-            df_normalizado[col] = 0.0
-        else:
-            df_normalizado[col] = (
-                df_normalizado[col].astype(float) - col_min
-            ) / col_range
 
-        stats[col] = {
-            "min": col_min,
-            "max": col_max,
-            "range": col_range,
-        }
+def transformar_con_scaler(
+    df_features: pd.DataFrame,
+    scaler: StandardScaler,
+) -> pd.DataFrame:
+    """
+    Aplica el scaler a las variables numéricas.
+    """
+    validar_columnas(df_features)
 
-    return df_normalizado, stats
+    df_escalado = df_features.copy()
+
+    df_escalado[COLUMNAS_ESCALABLES] = scaler.transform(
+        df_escalado[COLUMNAS_ESCALABLES].astype(float)
+    )
+
+    return df_escalado
+
+
+def ajustar_y_transformar(
+    df_features: pd.DataFrame,
+) -> Tuple[pd.DataFrame, StandardScaler]:
+    """
+    Ajusta StandardScaler y transforma el DataFrame.
+    """
+    scaler = ajustar_scaler(df_features)
+
+    df_escalado = transformar_con_scaler(
+        df_features,
+        scaler,
+    )
+
+    return df_escalado, scaler
