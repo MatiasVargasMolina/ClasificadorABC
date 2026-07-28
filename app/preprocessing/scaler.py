@@ -1,22 +1,27 @@
 from typing import Tuple
 
+import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
+
+COLUMNAS_LOGARITMICAS = [
+    "ventas_30d",
+    "visitas_30d",
+]
 
 COLUMNAS_ESCALABLES = [
     "ventas_30d",
     "visitas_30d",
     "precio_actual",
-    "stock_actual",
 ]
 
 
 def validar_columnas(df_features: pd.DataFrame) -> None:
     faltantes = [
-        col
-        for col in COLUMNAS_ESCALABLES
-        if col not in df_features.columns
+        columna
+        for columna in COLUMNAS_ESCALABLES
+        if columna not in df_features.columns
     ]
 
     if faltantes:
@@ -25,17 +30,34 @@ def validar_columnas(df_features: pd.DataFrame) -> None:
         )
 
 
+def preparar_variables(
+    df_features: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Aplica log1p a las variables de conteo antes de estandarizar.
+    """
+    validar_columnas(df_features)
+
+    df_preparado = df_features.copy()
+
+    df_preparado[COLUMNAS_LOGARITMICAS] = np.log1p(
+        df_preparado[COLUMNAS_LOGARITMICAS].astype(float)
+    )
+
+    return df_preparado
+
+
 def ajustar_scaler(
     df_features: pd.DataFrame,
 ) -> StandardScaler:
     """
-    Ajusta un StandardScaler usando las variables numéricas escalables.
+    Ajusta StandardScaler después de aplicar log1p a ventas y visitas.
     """
-    validar_columnas(df_features)
+    df_preparado = preparar_variables(df_features)
 
     scaler = StandardScaler()
     scaler.fit(
-        df_features[COLUMNAS_ESCALABLES].astype(float)
+        df_preparado[COLUMNAS_ESCALABLES].astype(float)
     )
 
     return scaler
@@ -46,14 +68,13 @@ def transformar_con_scaler(
     scaler: StandardScaler,
 ) -> pd.DataFrame:
     """
-    Aplica el scaler a las variables numéricas.
+    Aplica log1p y luego la estandarización.
     """
-    validar_columnas(df_features)
-
-    df_escalado = df_features.copy()
+    df_preparado = preparar_variables(df_features)
+    df_escalado = df_preparado.copy()
 
     df_escalado[COLUMNAS_ESCALABLES] = scaler.transform(
-        df_escalado[COLUMNAS_ESCALABLES].astype(float)
+        df_preparado[COLUMNAS_ESCALABLES].astype(float)
     )
 
     return df_escalado
@@ -63,7 +84,7 @@ def ajustar_y_transformar(
     df_features: pd.DataFrame,
 ) -> Tuple[pd.DataFrame, StandardScaler]:
     """
-    Ajusta StandardScaler y transforma el DataFrame.
+    Ajusta StandardScaler y transforma las variables del modelo.
     """
     scaler = ajustar_scaler(df_features)
 

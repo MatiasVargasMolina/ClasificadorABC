@@ -1,0 +1,4 @@
+﻿categoria,cantidad,porcentaje,ventas_30d_media,ventas_30d_mediana,ventas_30d_total,visitas_30d_media,visitas_30d_mediana,visitas_30d_total,precio_actual_media,precio_actual_mediana,precio_actual_total,stock_actual_media,stock_actual_mediana,stock_actual_total,en_promocion_media,en_promocion_mediana,en_promocion_total
+A,166,19.951923076923077,0.7409638554216867,0.0,123.0,25.22289156626506,10.0,4187.0,19365.126506024095,19999.0,3214611.0,98.51204819277109,100.0,16353.0,0.0,0.0,0.0
+B,250,30.048076923076923,0.0,0.0,0.0,2.856,1.0,714.0,39187.0,39999.0,9796750.0,100.0,100.0,25000.0,0.0,0.0,0.0
+C,416,50.0,0.0,0.0,0.0,0.5817307692307693,0.0,242.0,17336.69471153846,19999.0,7212065.0,99.9951923076923,100.0,41598.0,0.0,0.0,0.0

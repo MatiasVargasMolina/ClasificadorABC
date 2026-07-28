@@ -13,8 +13,8 @@ def ejecutar_ss_kmeans(
             "C": 0.50,
         },
         max_iter=300,
-        tol=1e-4,
-        n_init=5,
+        tol=0.0006796578090758161,
+        n_init=20,
         random_state=42,
         shuffle_unlabeled=False,
     )

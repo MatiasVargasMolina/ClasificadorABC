@@ -1,0 +1,79 @@
+{
+  "dataset": {
+    "publicaciones": 832,
+    "categorias": {
+      "A": {
+        "cantidad": 166,
+        "porcentaje": 19.951923076923077
+      },
+      "B": {
+        "cantidad": 250,
+        "porcentaje": 30.048076923076923
+      },
+      "C": {
+        "cantidad": 416,
+        "porcentaje": 50.0
+      }
+    },
+    "variables_modelo": [
+      "ventas_30d",
+      "visitas_30d",
+      "precio_actual",
+      "stock_actual",
+      "en_promocion"
+    ],
+    "variables_omitidas_heatmap_varianza_cero": [
+      "en_promocion"
+    ]
+  },
+  "clasificacion": {
+    "diagnostico_api": {
+      "capacidades_objetivo": {
+        "A": 166,
+        "B": 250,
+        "C": 416
+      },
+      "conteos_finales": {
+        "A": 166,
+        "B": 250,
+        "C": 416
+      },
+      "iteraciones": 9,
+      "inertia": 1345.1494045682039,
+      "metricas": {
+        "silhouette": 0.370716590316574,
+        "davies_bouldin": 1.1091268189937613,
+        "calinski_harabasz": 354.62794704176787
+      }
+    },
+    "silhouette_recalculada": 0.37632855342672306,
+    "silhouette_por_categoria": {
+      "A": -0.463942488155416,
+      "B": 0.4533107184911568,
+      "C": 0.6653656967837583
+    },
+    "pca_varianza_explicada": {
+      "CP1": 0.5961780246126928,
+      "CP2": 0.2609222085354163,
+      "total_2_componentes": 0.857100233148109
+    }
+  },
+  "optuna": null,
+  "estabilidad_random_state": null,
+  "estabilidad_bootstrap": null,
+  "seleccion_figuras": {
+    "principales": [
+      "figura_01_perfil_multicriterio_abc.png",
+      "figura_02_distribucion_ventas_visitas.png",
+      "figura_03_silueta_por_categoria.png",
+      "figura_04_pca_categorias_centroides.png"
+    ],
+    "condicionales_validacion": [],
+    "anexos": [],
+    "no_recomendado_como_figura": "Conteo A/B/C: las proporciones están impuestas por diseño; se conserva en resumen_por_categoria.csv."
+  },
+  "advertencias": [
+    "La silueta media por categoría es negativa en A=-0.464. Esto indica solapamiento o asignaciones más próximas a otro grupo y debe discutirse como limitación del resultado.",
+    "No se proporcionó --bootstrap-metrics. La figura de bootstrap queda pendiente hasta ejecutar esa validación."
+  ]
+}
