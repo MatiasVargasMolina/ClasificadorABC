@@ -1,3 +1,4 @@
+from app.ml.core.config import get_production_config
 from app.ml.core.ss_kmeans import SSEKMeans
 from app.ml.metrics.clustering_metrics import evaluate_internal_metrics
 
@@ -6,17 +7,12 @@ def ejecutar_ss_kmeans(
     X,
     proportions=None,
 ):
+    config = get_production_config(
+        proportions=proportions,
+    )
+
     modelo = SSEKMeans(
-        proportions=proportions or {
-            "A": 0.20,
-            "B": 0.30,
-            "C": 0.50,
-        },
-        max_iter=300,
-        tol=0.0006796578090758161,
-        n_init=20,
-        random_state=42,
-        shuffle_unlabeled=False,
+        config=config,
     )
 
     resultados = modelo.fit_predict(X)
@@ -27,6 +23,14 @@ def ejecutar_ss_kmeans(
     )
 
     diagnostico = {
+        "configuracion": {
+            "proportions": dict(modelo.proportions),
+            "max_iter": modelo.max_iter,
+            "tol": modelo.tol,
+            "n_init": modelo.n_init,
+            "random_state": modelo.random_state,
+            "shuffle_unlabeled": modelo.shuffle_unlabeled,
+        },
         "capacidades_objetivo": modelo.capacities_,
         "conteos_finales": modelo.counts_,
         "iteraciones": modelo.n_iter_,

@@ -8,6 +8,7 @@ from typing import Any
 import pandas as pd
 from sklearn.metrics import adjusted_rand_score
 
+from app.ml.core.config import get_production_config
 from app.ml.core.ss_kmeans import SSEKMeans
 from app.ml.metrics.clustering_metrics import evaluate_internal_metrics
 from app.schemas.input_schema import RequestInput
@@ -21,19 +22,12 @@ FIXED_SEED = 42
 FIXED_SEED_REPETITIONS = 3
 STABILITY_SEEDS = list(range(10))
 
-PROPORTIONS = {
-    "A": 0.20,
-    "B": 0.30,
-    "C": 0.50,
-}
-
-MAX_ITER = 300
-TOLERANCE = 1e-4
-N_INIT = 50
-SHUFFLE_UNLABELED = False
-
 
 def cargar_datos() -> tuple[pd.DataFrame, pd.Series]:
+    """
+    Carga el mismo dataset utilizado por la aplicación y ejecuta
+    el preprocesamiento oficial del proyecto.
+    """
     if not INPUT_PATH.exists():
         raise FileNotFoundError(
             f"No se encontró el dataset de entrada: {INPUT_PATH}"
@@ -50,9 +44,10 @@ def cargar_datos() -> tuple[pd.DataFrame, pd.Series]:
 
     try:
         request_payload = json.loads(raw_text)
+
     except json.JSONDecodeError:
-        # Permite leer un contenido copiado desde cURL:
-        # -d '{ ... }'
+        # También permite procesar contenido copiado desde cURL,
+        # por ejemplo: -d '{ ... }'
         first_brace = raw_text.find("{")
         last_brace = raw_text.rfind("}")
 
@@ -63,10 +58,13 @@ def cargar_datos() -> tuple[pd.DataFrame, pd.Series]:
                 "y terminar con '}}'."
             )
 
-        json_text = raw_text[first_brace:last_brace + 1]
+        json_text = raw_text[
+            first_brace:last_brace + 1
+        ]
 
         try:
             request_payload = json.loads(json_text)
+
         except json.JSONDecodeError as error:
             raise ValueError(
                 "El archivo contiene un JSON inválido. "
@@ -74,12 +72,18 @@ def cargar_datos() -> tuple[pd.DataFrame, pd.Series]:
                 f"columna {error.colno}: {error.msg}"
             ) from error
 
-    request_data = RequestInput.model_validate(request_payload)
-    preprocessing_result = ejecutar_preprocesamiento(request_data)
+    request_data = RequestInput.model_validate(
+        request_payload
+    )
+
+    preprocessing_result = ejecutar_preprocesamiento(
+        request_data
+    )
 
     if not preprocessing_result["hay_validos"]:
         raise RuntimeError(
-            "El dataset no contiene publicaciones válidas para clasificar."
+            "El dataset no contiene publicaciones válidas "
+            "para clasificar."
         )
 
     X_modelo = (
@@ -106,26 +110,56 @@ def cargar_datos() -> tuple[pd.DataFrame, pd.Series]:
         "publicaciones válidas.",
     )
 
+    print(
+        "Variables utilizadas:",
+        list(X_modelo.columns),
+    )
+
     return X_modelo, publication_ids
+
+
+def mostrar_configuracion() -> None:
+    """
+    Muestra la configuración productiva que utilizará la prueba.
+    """
+    config = get_production_config(
+        random_state=FIXED_SEED,
+    )
+
+    print("\nConfiguración oficial del modelo:")
+    print(f"  Proporciones: {config.proportions}")
+    print(f"  max_iter: {config.max_iter}")
+    print(f"  tol: {config.tol}")
+    print(f"  n_init: {config.n_init}")
+    print(f"  random_state de referencia: {config.random_state}")
+    print(f"  shuffle_unlabeled: {config.shuffle_unlabeled}")
+
 
 def ejecutar_corrida(
     X: pd.DataFrame,
     seed: int,
     run_name: str,
 ) -> tuple[dict[str, Any], pd.Series]:
-    start_time = time.perf_counter()
+    """
+    Ejecuta una clasificación utilizando la configuración oficial.
 
-    model = SSEKMeans(
-        proportions=PROPORTIONS,
-        max_iter=MAX_ITER,
-        tol=TOLERANCE,
-        n_init=N_INIT,
+    Solamente reemplaza random_state para evaluar estabilidad.
+    """
+    config = get_production_config(
         random_state=seed,
-        shuffle_unlabeled=SHUFFLE_UNLABELED,
     )
 
+    model = SSEKMeans(
+        config=config,
+    )
+
+    start_time = time.perf_counter()
+
     results = model.fit_predict(X)
-    elapsed_seconds = time.perf_counter() - start_time
+
+    elapsed_seconds = (
+        time.perf_counter() - start_time
+    )
 
     labels = (
         results["categoria"]
@@ -141,6 +175,10 @@ def ejecutar_corrida(
     row = {
         "corrida": run_name,
         "random_state": seed,
+        "max_iter": model.max_iter,
+        "tolerancia": model.tol,
+        "n_init": model.n_init,
+        "shuffle_unlabeled": model.shuffle_unlabeled,
         "convergio": model.converged_,
         "motivo_termino": model.stop_reason_,
         "corridas_convergentes": model.converged_runs_,
@@ -164,12 +202,17 @@ def agregar_comparacion(
     labels: pd.Series,
     reference_labels: pd.Series,
 ) -> None:
+    """
+    Compara una clasificación contra la corrida de referencia.
+    """
     row["coincidencia_referencia_pct"] = float(
         (labels == reference_labels).mean() * 100
     )
+
     row["publicaciones_diferentes"] = int(
         (labels != reference_labels).sum()
     )
+
     row["adjusted_rand_index"] = float(
         adjusted_rand_score(
             reference_labels,
@@ -180,45 +223,66 @@ def agregar_comparacion(
 
 def main() -> None:
     X, publication_ids = cargar_datos()
+
+    mostrar_configuracion()
+
     OUTPUT_DIRECTORY.mkdir(
         parents=True,
         exist_ok=True,
     )
 
     report_rows: list[dict[str, Any]] = []
+
     label_columns: dict[str, pd.Series] = {
         "publication_id": publication_ids,
     }
 
-    print("\n1. Prueba de reproducibilidad con random_state=42")
+    print(
+        "\n1. Prueba de reproducibilidad "
+        "con random_state=42"
+    )
 
     reference_row, reference_labels = ejecutar_corrida(
         X=X,
         seed=FIXED_SEED,
         run_name="seed_42_repeticion_1",
     )
+
     agregar_comparacion(
         row=reference_row,
         labels=reference_labels,
         reference_labels=reference_labels,
     )
+
     report_rows.append(reference_row)
-    label_columns["seed_42_repeticion_1"] = reference_labels
+
+    label_columns[
+        "seed_42_repeticion_1"
+    ] = reference_labels
 
     print(
         "  Repetición 1:",
         f"inercia={reference_row['inercia']:.4f}",
         f"iteraciones={reference_row['iteraciones']}",
+        f"convergentes="
+        f"{reference_row['corridas_convergentes']}/"
+        f"{reference_row['n_init']}",
     )
 
-    for repetition in range(2, FIXED_SEED_REPETITIONS + 1):
-        run_name = f"seed_42_repeticion_{repetition}"
+    for repetition in range(
+        2,
+        FIXED_SEED_REPETITIONS + 1,
+    ):
+        run_name = (
+            f"seed_42_repeticion_{repetition}"
+        )
 
         row, labels = ejecutar_corrida(
             X=X,
             seed=FIXED_SEED,
             run_name=run_name,
         )
+
         agregar_comparacion(
             row=row,
             labels=labels,
@@ -230,11 +294,17 @@ def main() -> None:
 
         print(
             f"  Repetición {repetition}:",
-            f"coincidencia={row['coincidencia_referencia_pct']:.2f}%",
+            f"coincidencia="
+            f"{row['coincidencia_referencia_pct']:.2f}%",
             f"ARI={row['adjusted_rand_index']:.4f}",
+            f"diferentes="
+            f"{row['publicaciones_diferentes']}",
         )
 
-    print("\n2. Prueba de estabilidad con semillas 0–9")
+    print(
+        "\n2. Prueba de estabilidad "
+        "con semillas 0–9"
+    )
 
     for seed in STABILITY_SEEDS:
         run_name = f"seed_{seed}"
@@ -245,6 +315,7 @@ def main() -> None:
                 seed=seed,
                 run_name=run_name,
             )
+
             agregar_comparacion(
                 row=row,
                 labels=labels,
@@ -257,8 +328,11 @@ def main() -> None:
             print(
                 f"  Semilla {seed}:",
                 f"inercia={row['inercia']:.4f}",
-                f"coincidencia={row['coincidencia_referencia_pct']:.2f}%",
+                f"coincidencia="
+                f"{row['coincidencia_referencia_pct']:.2f}%",
                 f"ARI={row['adjusted_rand_index']:.4f}",
+                f"diferentes="
+                f"{row['publicaciones_diferentes']}",
             )
 
         except RuntimeError as error:
@@ -270,21 +344,36 @@ def main() -> None:
                     "error": str(error),
                 }
             )
+
             print(
-                f"  Semilla {seed}: ERROR - {error}"
+                f"  Semilla {seed}: "
+                f"ERROR - {error}"
             )
 
-    report = pd.DataFrame(report_rows)
-    labels_report = pd.DataFrame(label_columns)
+    report = pd.DataFrame(
+        report_rows
+    )
 
-    report_path = OUTPUT_DIRECTORY / "random_state_metrics.csv"
-    labels_path = OUTPUT_DIRECTORY / "random_state_labels.csv"
+    labels_report = pd.DataFrame(
+        label_columns
+    )
+
+    report_path = (
+        OUTPUT_DIRECTORY
+        / "random_state_metrics.csv"
+    )
+
+    labels_path = (
+        OUTPUT_DIRECTORY
+        / "random_state_labels.csv"
+    )
 
     report.to_csv(
         report_path,
         index=False,
         encoding="utf-8-sig",
     )
+
     labels_report.to_csv(
         labels_path,
         index=False,
@@ -299,43 +388,127 @@ def main() -> None:
     ]
 
     reproducible = bool(
-        (fixed_seed_rows["coincidencia_referencia_pct"] == 100.0).all()
-        and (fixed_seed_rows["adjusted_rand_index"] == 1.0).all()
+        (
+            fixed_seed_rows[
+                "coincidencia_referencia_pct"
+            ] == 100.0
+        ).all()
+        and (
+            fixed_seed_rows[
+                "adjusted_rand_index"
+            ] == 1.0
+        ).all()
     )
+
+    expected_stability_runs = [
+        f"seed_{seed}"
+        for seed in STABILITY_SEEDS
+    ]
 
     stability_rows = report[
         report["corrida"].isin(
-            [f"seed_{seed}" for seed in STABILITY_SEEDS]
+            expected_stability_runs
         )
         & report["convergio"].eq(True)
     ]
 
     print("\n3. Resumen")
+
     print(
         "  Reproducibilidad con semilla 42:",
-        "CONFIRMADA" if reproducible else "NO CONFIRMADA",
+        (
+            "CONFIRMADA"
+            if reproducible
+            else "NO CONFIRMADA"
+        ),
     )
 
     if not stability_rows.empty:
+        coincidence_mean = stability_rows[
+            "coincidencia_referencia_pct"
+        ].mean()
+
+        coincidence_std = stability_rows[
+            "coincidencia_referencia_pct"
+        ].std(ddof=1)
+
+        ari_mean = stability_rows[
+            "adjusted_rand_index"
+        ].mean()
+
+        ari_std = stability_rows[
+            "adjusted_rand_index"
+        ].std(ddof=1)
+
+        inertia_mean = stability_rows[
+            "inercia"
+        ].mean()
+
+        inertia_std = stability_rows[
+            "inercia"
+        ].std(ddof=1)
+
+        silhouette_mean = stability_rows[
+            "silhouette"
+        ].mean()
+
+        silhouette_std = stability_rows[
+            "silhouette"
+        ].std(ddof=1)
+
+        different_mean = stability_rows[
+            "publicaciones_diferentes"
+        ].mean()
+
         print(
             "  Corridas convergentes:",
-            f"{len(stability_rows)}/{len(STABILITY_SEEDS)}",
+            f"{len(stability_rows)}/"
+            f"{len(STABILITY_SEEDS)}",
         )
+
         print(
             "  Coincidencia promedio:",
-            f"{stability_rows['coincidencia_referencia_pct'].mean():.2f}%",
+            f"{coincidence_mean:.2f}%",
         )
+
+        print(
+            "  Desviación de coincidencia:",
+            f"{coincidence_std:.4f}",
+        )
+
         print(
             "  ARI promedio:",
-            f"{stability_rows['adjusted_rand_index'].mean():.4f}",
+            f"{ari_mean:.4f}",
         )
+
+        print(
+            "  Desviación del ARI:",
+            f"{ari_std:.4f}",
+        )
+
+        print(
+            "  Publicaciones diferentes promedio:",
+            f"{different_mean:.2f}",
+        )
+
         print(
             "  Inercia promedio:",
-            f"{stability_rows['inercia'].mean():.4f}",
+            f"{inertia_mean:.4f}",
         )
+
         print(
             "  Desviación de inercia:",
-            f"{stability_rows['inercia'].std(ddof=1):.4f}",
+            f"{inertia_std:.4f}",
+        )
+
+        print(
+            "  Silhouette promedio:",
+            f"{silhouette_mean:.4f}",
+        )
+
+        print(
+            "  Desviación de Silhouette:",
+            f"{silhouette_std:.4f}",
         )
 
     print("\nArchivos generados:")

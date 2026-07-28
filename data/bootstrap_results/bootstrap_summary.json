@@ -1,0 +1,213 @@
+{
+  "metodo": "Bootstrap no paramétrico con remuestreo de publicaciones con reemplazo.",
+  "reutilizacion_pipeline": {
+    "servicio": "app.services.clasificacion_service.ejecutar_clasificacion",
+    "detalle": "Cada repetición usa el mismo pipeline de validación, preprocesamiento, escalamiento, SSEKMeans y métricas empleado por la API."
+  },
+  "nota_interpretacion": "Los intervalos describen estabilidad interna, no exactitud frente a etiquetas reales. Las observaciones no incluidas en una muestra no se clasifican porque el pipeline actual no expone predict para datos externos al ajuste.",
+  "configuracion": {
+    "n_bootstrap_solicitados": 100,
+    "n_bootstrap_exitosos": 100,
+    "n_bootstrap_fallidos": 0,
+    "semilla_bootstrap": 2026,
+    "nivel_confianza": 0.95,
+    "configuracion_modelo": "Definida exclusivamente en app/services/kmeans_service.py."
+  },
+  "dataset": {
+    "publicaciones_validas": 832
+  },
+  "modelo_referencia": {
+    "capacidades_objetivo": {
+      "A": 166,
+      "B": 250,
+      "C": 416
+    },
+    "conteos_finales": {
+      "A": 166,
+      "B": 250,
+      "C": 416
+    },
+    "iteraciones": 9,
+    "inertia": 1345.1494045682039,
+    "metricas": {
+      "silhouette": 0.370716590316574,
+      "davies_bouldin": 1.1091268189937613,
+      "calinski_harabasz": 354.62794704176787
+    }
+  },
+  "resumen_metricas": [
+    {
+      "metrica": "silhouette",
+      "valor_referencia": 0.370716590316574,
+      "n_validos": 100,
+      "media": 0.36924779786503825,
+      "desviacion_estandar": 0.009515443784279185,
+      "mediana": 0.3695101287517356,
+      "ic_inferior": 0.3488673228052902,
+      "ic_superior": 0.38590858439971776,
+      "minimo": 0.3461447951656907,
+      "maximo": 0.392956523701337
+    },
+    {
+      "metrica": "davies_bouldin",
+      "valor_referencia": 1.1091268189937613,
+      "n_validos": 100,
+      "media": 1.1138071528782088,
+      "desviacion_estandar": 0.02912073265993253,
+      "mediana": 1.1128838804799859,
+      "ic_inferior": 1.0628066730546932,
+      "ic_superior": 1.1846438874881122,
+      "minimo": 1.0333015487908328,
+      "maximo": 1.1894090136763282
+    },
+    {
+      "metrica": "calinski_harabasz",
+      "valor_referencia": 354.62794704176787,
+      "n_validos": 100,
+      "media": 355.9680683070352,
+      "desviacion_estandar": 19.98357124792049,
+      "mediana": 354.8964422020864,
+      "ic_inferior": 320.05634870410154,
+      "ic_superior": 396.4734569281665,
+      "minimo": 304.76585580301605,
+      "maximo": 413.75650617919575
+    },
+    {
+      "metrica": "inercia",
+      "valor_referencia": 1345.1494045682039,
+      "n_validos": 100,
+      "media": 1343.699418417916,
+      "desviacion_estandar": 34.67368623892887,
+      "mediana": 1344.6820168603967,
+      "ic_inferior": 1275.741782072681,
+      "ic_superior": 1408.4585565105021,
+      "minimo": 1249.1202813155592,
+      "maximo": 1438.3999902858463
+    },
+    {
+      "metrica": "ari_referencia",
+      "valor_referencia": 1.0,
+      "n_validos": 100,
+      "media": 0.930730167639951,
+      "desviacion_estandar": 0.03700826938382998,
+      "mediana": 0.9367800999467653,
+      "ic_inferior": 0.8316544832014245,
+      "ic_superior": 0.9770335602974624,
+      "minimo": 0.8004722947731673,
+      "maximo": 0.9942337546886056
+    },
+    {
+      "metrica": "coincidencia_referencia",
+      "valor_referencia": 1.0,
+      "n_validos": 100,
+      "media": 0.9749871292887596,
+      "desviacion_estandar": 0.013434389296842443,
+      "mediana": 0.9772288636036295,
+      "ic_inferior": 0.9415153422415343,
+      "ic_superior": 0.9914242240364812,
+      "minimo": 0.9248554913294798,
+      "maximo": 0.998046875
+    },
+    {
+      "metrica": "jaccard_A",
+      "valor_referencia": 1.0,
+      "n_validos": 100,
+      "media": 0.9185031605439257,
+      "desviacion_estandar": 0.04062302187425589,
+      "mediana": 0.9259195747234845,
+      "ic_inferior": 0.8098870056497176,
+      "ic_superior": 0.9721070624891812,
+      "minimo": 0.7711864406779662,
+      "maximo": 0.9903846153846154
+    },
+    {
+      "metrica": "jaccard_B",
+      "valor_referencia": 1.0,
+      "n_validos": 100,
+      "media": 0.9504298289395042,
+      "desviacion_estandar": 0.03395611672537665,
+      "mediana": 0.9575695235296279,
+      "ic_inferior": 0.8611445783132531,
+      "ic_superior": 0.9937728119903704,
+      "minimo": 0.847457627118644,
+      "maximo": 1.0
+    },
+    {
+      "metrica": "jaccard_C",
+      "valor_referencia": 1.0,
+      "n_validos": 100,
+      "media": 0.96605887870942,
+      "desviacion_estandar": 0.020234722524702643,
+      "mediana": 0.9675674622756668,
+      "ic_inferior": 0.9081495611828498,
+      "ic_superior": 0.9943801250663677,
+      "minimo": 0.8970588235294118,
+      "maximo": 0.9961389961389961
+    },
+    {
+      "metrica": "cobertura_muestra",
+      "valor_referencia": null,
+      "n_validos": 100,
+      "media": 0.6321033653846154,
+      "desviacion_estandar": 0.01037750252597576,
+      "mediana": 0.6310096153846154,
+      "ic_inferior": 0.6117788461538461,
+      "ic_superior": 0.6514423076923077,
+      "minimo": 0.6081730769230769,
+      "maximo": 0.6634615384615384
+    },
+    {
+      "metrica": "proporcion_comparable",
+      "valor_referencia": null,
+      "n_validos": 100,
+      "media": 0.6303966346153848,
+      "desviacion_estandar": 0.01022793745743689,
+      "mediana": 0.6298076923076923,
+      "ic_inferior": 0.6099459134615385,
+      "ic_superior": 0.6502403846153846,
+      "minimo": 0.6069711538461539,
+      "maximo": 0.6550480769230769
+    },
+    {
+      "metrica": "iteraciones",
+      "valor_referencia": 9.0,
+      "n_validos": 100,
+      "media": 6.73,
+      "desviacion_estandar": 2.5180359509953485,
+      "mediana": 7.0,
+      "ic_inferior": 3.0,
+      "ic_superior": 12.0,
+      "minimo": 3.0,
+      "maximo": 15.0
+    },
+    {
+      "metrica": "tiempo_segundos",
+      "valor_referencia": null,
+      "n_validos": 100,
+      "media": 12.929817228000038,
+      "desviacion_estandar": 2.00068963964987,
+      "mediana": 12.66783420000047,
+      "ic_inferior": 10.257319464999501,
+      "ic_superior": 17.274686124999835,
+      "minimo": 8.54047299999911,
+      "maximo": 19.04912929999955
+    }
+  ],
+  "estabilidad_publicaciones": {
+    "umbral": 0.8,
+    "cantidad_bajo_umbral": 36,
+    "proporcion_bajo_umbral": 0.04326923076923077,
+    "media": 0.9747959341707548,
+    "mediana": 1.0
+  },
+  "ejecucion": {
+    "segundos_totales": 1347.1634734000008,
+    "segundos_promedio": 13.471634734000009
+  },
+  "archivos": {
+    "metricas": "C:\\Users\\matias\\Documents\\ClasificadorABC\\data\\bootstrap_results\\bootstrap_metrics.csv",
+    "resumen": "C:\\Users\\matias\\Documents\\ClasificadorABC\\data\\bootstrap_results\\bootstrap_summary.csv",
+    "estabilidad_publicaciones": "C:\\Users\\matias\\Documents\\ClasificadorABC\\data\\bootstrap_results\\bootstrap_publication_stability.csv",
+    "figura": "C:\\Users\\matias\\Documents\\ClasificadorABC\\data\\bootstrap_results\\bootstrap_validation.png"
+  }
+}

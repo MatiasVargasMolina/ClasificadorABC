@@ -1,0 +1,80 @@
+{
+  "dataset": {
+    "publicaciones": 832,
+    "categorias": {
+      "A": {
+        "cantidad": 166,
+        "porcentaje": 19.951923076923077
+      },
+      "B": {
+        "cantidad": 250,
+        "porcentaje": 30.048076923076923
+      },
+      "C": {
+        "cantidad": 416,
+        "porcentaje": 50.0
+      }
+    },
+    "variables_modelo": [
+      "ventas_30d",
+      "visitas_30d",
+      "precio_actual"
+    ],
+    "transformaciones": {
+      "ventas_30d": "log1p + StandardScaler",
+      "visitas_30d": "log1p + StandardScaler",
+      "precio_actual": "StandardScaler"
+    },
+    "variables_contexto_excluidas_modelo": [
+      "stock_actual",
+      "en_promocion"
+    ],
+    "variables_omitidas_heatmap_varianza_cero": []
+  },
+  "clasificacion": {
+    "diagnostico_api": {
+      "capacidades_objetivo": {
+        "A": 166,
+        "B": 250,
+        "C": 416
+      },
+      "conteos_finales": {
+        "A": 166,
+        "B": 250,
+        "C": 416
+      },
+      "iteraciones": 9,
+      "inertia": 1345.1494045682039,
+      "metricas": {
+        "silhouette": 0.370716590316574,
+        "davies_bouldin": 1.1091268189937613,
+        "calinski_harabasz": 354.62794704176787
+      }
+    },
+    "silhouette_api": 0.370716590316574,
+    "silhouette_recalculada": 0.370716590316574,
+    "silhouette_por_categoria": {
+      "A": -0.025161919505061223,
+      "B": 0.299706503978927,
+      "C": 0.571361672563697
+    },
+    "pca_varianza_explicada": {
+      "CP1": 0.5248960124144415,
+      "CP2": 0.3423602948906993,
+      "total_2_componentes": 0.8672563073051408
+    }
+  },
+  "figuras_generadas": [
+    "figura_01_perfil_multicriterio_abc.png",
+    "figura_02_distribucion_ventas_visitas.png",
+    "figura_03_silueta_por_categoria.png",
+    "figura_04_pca_categorias_centroides.png"
+  ],
+  "archivos_auxiliares": [
+    "classification_response.json",
+    "resumen_por_categoria.csv"
+  ],
+  "advertencias": [
+    "La silueta media es negativa en A=-0.025. Estas categorías presentan solapamiento parcial con otros grupos."
+  ]
+}
