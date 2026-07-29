@@ -10,62 +10,19 @@ services:
       - "8010:8010"
 
     volumes:
-      # Carpeta local donde se guardan los artefactos del worker:
-      # - autosklearn_model.joblib
-      # - autosklearn_background.joblib
-      # - autosklearn_meta.joblib
-      #
-      # Dentro del contenedor esa carpeta se ve como /artifacts.
       - ./artifacts/autosklearn:/artifacts
 
     environment:
-      # Carpeta interna del contenedor donde se guardan/cargan los artefactos.
       - ARTIFACT_DIR=/artifacts
 
-      # ============================================================
-      # CONFIGURACIÓN SHAP ACTUAL: PRUEBA LOCAL LIVIANA
-      # ============================================================
-      # ============================================================
-      - SHAP_BACKGROUND_SIZE=20
-      - SHAP_MAX_EXPLAIN_ROWS=10
-      - SHAP_NSAMPLES=30
+      # Background que se crea durante el entrenamiento.
+      - SHAP_BACKGROUND_SIZE=50
+      - SHAP_BACKGROUND_RANDOM_STATE=42
 
-      # ============================================================
-      # PRUEBA SERVER 1: LIVIANA
-      # ============================================================
-      # - SHAP_BACKGROUND_SIZE=30
-      # - SHAP_MAX_EXPLAIN_ROWS=50
-      # - SHAP_NSAMPLES=30
-      # ============================================================
+      # Primera evaluación: muestra estratificada de 60 publicaciones.
+      # Para el resultado global final, cambiar este valor a 832.
+      - SHAP_MAX_EXPLAIN_ROWS=832
 
-      # ============================================================
-      # PRUEBA SERVER 2: INTERMEDIA
-      # ============================================================
-      # - SHAP_BACKGROUND_SIZE=50
-      # - SHAP_MAX_EXPLAIN_ROWS=100
-      # - SHAP_NSAMPLES=50
-      # ============================================================
-
-      # ============================================================
-      # PRUEBA SERVER 3: ALTA
-      # ============================================================
-      # - SHAP_BACKGROUND_SIZE=50
-      # - SHAP_MAX_EXPLAIN_ROWS=300
-      # - SHAP_NSAMPLES=50
-      # ============================================================
-
-      # ============================================================
-      # PRUEBA SERVER 4: TODAS LAS PUBLICACIONES
-      # ============================================================
-      # - SHAP_BACKGROUND_SIZE=50
-      # - SHAP_MAX_EXPLAIN_ROWS=827
-      # - SHAP_NSAMPLES=50
-      # ============================================================
-
-      # ============================================================
-      # PRUEBA SERVER 5: TODAS LAS PUBLICACIONES MÁS PESADO
-      # ============================================================
-      # - SHAP_BACKGROUND_SIZE=100
-      # - SHAP_MAX_EXPLAIN_ROWS=827
-      # - SHAP_NSAMPLES=100
-      # ============================================================
+      # Con tres variables existen 2^3 - 2 = 6 coaliciones
+      # no triviales.
+      - SHAP_NSAMPLES=6

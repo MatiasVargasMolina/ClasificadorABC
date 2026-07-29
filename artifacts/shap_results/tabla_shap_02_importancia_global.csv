@@ -1,0 +1,4 @@
+﻿feature,variable,mean_abs_shap,porcentaje_relativo
+precio_actual,Precio actual,0.27137438986994766,59.9296286366791
+visitas_30d,Visitas (30 días),0.16639145336580355,36.74546449762171
+ventas_30d,Ventas (30 días),0.015055901272534854,3.3249068656991914

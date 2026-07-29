@@ -1,0 +1,10 @@
+﻿categoria,feature,variable,mean_abs_shap
+A,ventas_30d,Ventas (30 días),0.022583851908802282
+A,visitas_30d,Visitas (30 días),0.24397224877225016
+A,precio_actual,Precio actual,0.06700893791034246
+B,ventas_30d,Ventas (30 días),0.00658944062654978
+B,visitas_30d,Visitas (30 días),0.06096143108221592
+B,precio_actual,Precio actual,0.4055639392985094
+C,ventas_30d,Ventas (30 días),0.015994411282252503
+C,visitas_30d,Visitas (30 días),0.19424068024294458
+C,precio_actual,Precio actual,0.34155029240099116

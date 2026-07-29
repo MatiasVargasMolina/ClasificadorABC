@@ -7,57 +7,60 @@ FEATURE_COLUMNS = [
     "ventas_30d",
     "visitas_30d",
     "precio_actual",
-    "stock_actual",
-    "en_promocion",
 ]
+
+
+def _build_feature_values(
+    item: Dict[str, Any],
+) -> Dict[str, Any]:
+    return {
+        "ventas_30d": int(item["ventas_30d"]),
+        "visitas_30d": int(item["visitas_30d"]),
+        "precio_actual": float(item["precio_actual"]),
+    }
 
 
 def build_train_rows_from_classification(
     clasificacion_result: Dict[str, Any],
 ) -> List[Dict[str, Any]]:
     """
-    Convierte la salida de ejecutar_clasificacion() en filas supervisadas
-    para entrenar el modelo sustituto AutoSklearn.
+    Convierte la salida de SS-E-KMeans en filas supervisadas.
 
-    El target supervisado será la categoria generada por SS-E-KMeans:
-    A, B o C.
+    AutoSklearn aprende a imitar la categoría A, B o C utilizando
+    exactamente las mismas variables consideradas por el clasificador.
     """
-
     rows: List[Dict[str, Any]] = []
 
     for item in clasificacion_result.get("resultados", []):
-        rows.append(
-            {
-                "publication_id": item["publication_id"],
-                "ventas_30d": int(item["ventas_30d"]),
-                "visitas_30d": int(item["visitas_30d"]),
-                "precio_actual": float(item["precio_actual"]),
-                "stock_actual": int(item["stock_actual"]),
-                "en_promocion": int(item["en_promocion"]),
-                "categoria": str(item["categoria"]),
-            }
-        )
+        row = {
+            "publication_id": str(item["publication_id"]),
+            **_build_feature_values(item),
+            "categoria": str(item["categoria"]),
+        }
+        rows.append(row)
 
     return rows
 
 
-def build_predict_rows_from_request(data: Any) -> List[Dict[str, Any]]:
+def build_predict_rows_from_request(
+    data: Any,
+) -> List[Dict[str, Any]]:
     """
-    Convierte el RequestInput original en filas para que el worker
-    AutoSklearn pueda predecir y explicar con SHAP.
-    """
+    Convierte RequestInput en filas para predecir y explicar.
 
+    stock_actual y en_promocion pueden permanecer en el contrato de la
+    API principal, pero no se envían al modelo sustituto porque no forman
+    parte del clasificador ABC definitivo.
+    """
     rows: List[Dict[str, Any]] = []
 
     for producto in data.productos:
         rows.append(
             {
-                "publication_id": producto.publication_id,
+                "publication_id": str(producto.publication_id),
                 "ventas_30d": int(producto.ventas_30d),
                 "visitas_30d": int(producto.visitas_30d),
                 "precio_actual": float(producto.precio_actual),
-                "stock_actual": int(producto.stock_actual),
-                "en_promocion": int(producto.en_promocion),
             }
         )
 

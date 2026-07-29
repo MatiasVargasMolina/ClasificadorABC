@@ -9,7 +9,9 @@ from app.ml.explainability.surrogate_payload import (
     build_predict_rows_from_request,
     build_train_rows_from_classification,
 )
-from app.services.clasificacion_service import ejecutar_clasificacion
+from app.services.clasificacion_service import (
+    ejecutar_clasificacion,
+)
 
 
 AUTOSKLEARN_WORKER_URL = os.getenv(
@@ -17,42 +19,74 @@ AUTOSKLEARN_WORKER_URL = os.getenv(
     "http://127.0.0.1:8010",
 )
 
+TRAIN_TIMEOUT_SECONDS = int(
+    os.getenv(
+        "AUTOSKLEARN_TRAIN_TIMEOUT_SECONDS",
+        "1200",
+    )
+)
 
-def _post_to_worker(path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+EXPLAIN_TIMEOUT_SECONDS = int(
+    os.getenv(
+        "AUTOSKLEARN_EXPLAIN_TIMEOUT_SECONDS",
+        "3600",
+    )
+)
+
+
+def _post_to_worker(
+    path: str,
+    payload: Dict[str, Any],
+    timeout_seconds: int,
+) -> Dict[str, Any]:
     url = f"{AUTOSKLEARN_WORKER_URL}{path}"
 
     try:
-        response = requests.post(url, json=payload, timeout=900)
+        response = requests.post(
+            url,
+            json=payload,
+            timeout=None,
+        )
+    except requests.Timeout as exc:
+        raise RuntimeError(
+            f"El worker AutoSklearn superó el tiempo máximo "
+            f"de {timeout_seconds} segundos en {url}."
+        ) from exc
     except requests.RequestException as exc:
         raise RuntimeError(
             f"No se pudo conectar con el worker AutoSklearn en {url}. "
             f"Verifica que Docker esté corriendo. Detalle: {exc}"
-        )
+        ) from exc
 
     if response.status_code >= 400:
         raise RuntimeError(
-            f"Error desde worker AutoSklearn ({response.status_code}): "
-            f"{response.text}"
+            f"Error desde worker AutoSklearn "
+            f"({response.status_code}): {response.text}"
         )
 
     return response.json()
 
 
-def _get_from_worker(path: str) -> Dict[str, Any]:
+def _get_from_worker(
+    path: str,
+) -> Dict[str, Any]:
     url = f"{AUTOSKLEARN_WORKER_URL}{path}"
 
     try:
-        response = requests.get(url, timeout=30)
+        response = requests.get(
+            url,
+            timeout=30,
+        )
     except requests.RequestException as exc:
         raise RuntimeError(
             f"No se pudo conectar con el worker AutoSklearn en {url}. "
             f"Verifica que Docker esté corriendo. Detalle: {exc}"
-        )
+        ) from exc
 
     if response.status_code >= 400:
         raise RuntimeError(
-            f"Error desde worker AutoSklearn ({response.status_code}): "
-            f"{response.text}"
+            f"Error desde worker AutoSklearn "
+            f"({response.status_code}): {response.text}"
         )
 
     return response.json()
@@ -64,56 +98,87 @@ def health_explainability_worker() -> Dict[str, Any]:
 
 def entrenar_surrogate_autosklearn(
     data: Any,
-    time_left_for_this_task: int = 120,
-    per_run_time_limit: int = 30,
+    time_left_for_this_task: int = 600,
+    per_run_time_limit: int = 60,
 ) -> Dict[str, Any]:
     """
-    Flujo:
-    1. Ejecuta clasificación SS-E-KMeans.
-    2. Usa categoria A/B/C como target supervisado.
-    3. Envía dataset al worker Docker con AutoSklearn.
+    Ejecuta SS-E-KMeans, utiliza sus categorías como target y entrena
+    el modelo sustituto AutoSklearn.
     """
-
     clasificacion_result = ejecutar_clasificacion(data)
-    resultados = clasificacion_result.get("resultados", [])
+    resultados = clasificacion_result.get(
+        "resultados",
+        [],
+    )
 
     if not resultados:
         return {
-            "mensaje": "No hay resultados válidos para entrenar el modelo sustituto",
+            "mensaje": (
+                "No hay resultados válidos para entrenar "
+                "el modelo sustituto"
+            ),
             "clasificacion": clasificacion_result,
         }
 
-    train_rows = build_train_rows_from_classification(clasificacion_result)
+    train_rows = build_train_rows_from_classification(
+        clasificacion_result
+    )
 
     payload = {
         "rows": train_rows,
-        "time_left_for_this_task": time_left_for_this_task,
+        "time_left_for_this_task": (
+            time_left_for_this_task
+        ),
         "per_run_time_limit": per_run_time_limit,
     }
 
-    worker_result = _post_to_worker("/train", payload)
+    worker_result = _post_to_worker(
+        path="/train",
+        payload=payload,
+        timeout_seconds=max(
+            TRAIN_TIMEOUT_SECONDS,
+            time_left_for_this_task + 300,
+        ),
+    )
 
     return {
-        "mensaje": "Surrogate AutoSklearn entrenado desde etiquetas SS-E-KMeans",
-        "diagnostico_clasificacion": clasificacion_result.get("diagnostico"),
-        "productos_invalidos": clasificacion_result.get("productos_invalidos", []),
+        "mensaje": (
+            "Surrogate AutoSklearn entrenado desde "
+            "etiquetas SS-E-KMeans"
+        ),
+        "diagnostico_clasificacion": (
+            clasificacion_result.get(
+                "diagnostico"
+            )
+        ),
+        "productos_invalidos": (
+            clasificacion_result.get(
+                "productos_invalidos",
+                [],
+            )
+        ),
         "autosklearn": worker_result,
     }
 
 
 def explicar_con_surrogate_autosklearn(
     data: Any,
-    top_n: int = 5,
+    top_n: int = 3,
 ) -> Dict[str, Any]:
     """
-    Usa el surrogate AutoSklearn ya entrenado para predecir y explicar con SHAP.
+    Usa el modelo sustituto entrenado para predecir y explicar.
     """
-
-    predict_rows = build_predict_rows_from_request(data)
+    predict_rows = build_predict_rows_from_request(
+        data
+    )
 
     payload = {
         "rows": predict_rows,
-        "top_n": top_n,
+        "top_n": min(top_n, 3),
     }
 
-    return _post_to_worker("/explain", payload)
+    return _post_to_worker(
+        path="/explain",
+        payload=payload,
+        timeout_seconds=EXPLAIN_TIMEOUT_SECONDS,
+    )

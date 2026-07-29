@@ -1,0 +1,184 @@
+{
+  "source": "data\\shap_explain_response.json",
+  "variables_explicadas": [
+    "ventas_30d",
+    "visitas_30d",
+    "precio_actual"
+  ],
+  "modelo_sustituto": "AutoSklearnClassifier",
+  "metricas_entrenamiento": {
+    "accuracy": 0.9760479041916168,
+    "balanced_accuracy": 0.9841269841269842,
+    "macro_f1": 0.972822299651568,
+    "n_total": 832,
+    "n_train": 665,
+    "n_test": 167,
+    "classes": [
+      "A",
+      "B",
+      "C"
+    ],
+    "confusion_matrix": [
+      [
+        33,
+        0,
+        0
+      ],
+      [
+        0,
+        50,
+        0
+      ],
+      [
+        4,
+        0,
+        80
+      ]
+    ],
+    "classification_report": {
+      "A": {
+        "precision": 0.8918918918918919,
+        "recall": 1,
+        "f1-score": 0.9428571428571428,
+        "support": 33
+      },
+      "B": {
+        "precision": 1,
+        "recall": 1,
+        "f1-score": 1,
+        "support": 50
+      },
+      "C": {
+        "precision": 1,
+        "recall": 0.9523809523809523,
+        "f1-score": 0.975609756097561,
+        "support": 84
+      },
+      "accuracy": 0.9760479041916168,
+      "macro avg": {
+        "precision": 0.963963963963964,
+        "recall": 0.9841269841269842,
+        "f1-score": 0.972822299651568,
+        "support": 167
+      },
+      "weighted avg": {
+        "precision": 0.9786373199546853,
+        "recall": 0.9760479041916168,
+        "f1-score": 0.9764401510567715,
+        "support": 167
+      }
+    },
+    "training_seconds": 611.122
+  },
+  "configuracion_shap": {
+    "explainer": "KernelExplainer",
+    "link": "identity",
+    "background_rows": 50,
+    "background_random_state": 42,
+    "nsamples": 6,
+    "productos_recibidos": 832,
+    "productos_explicados": 832,
+    "limite_productos_explicados": 832,
+    "shap_seconds": 2970.098,
+    "truncated": false
+  },
+  "conteos_predichos": {
+    "A": 172,
+    "B": 250,
+    "C": 410
+  },
+  "importancia_global": [
+    {
+      "feature": "precio_actual",
+      "variable": "Precio actual",
+      "mean_abs_shap": 0.27137438986994766,
+      "porcentaje_relativo": 59.9296286366791
+    },
+    {
+      "feature": "visitas_30d",
+      "variable": "Visitas (30 días)",
+      "mean_abs_shap": 0.16639145336580355,
+      "porcentaje_relativo": 36.74546449762171
+    },
+    {
+      "feature": "ventas_30d",
+      "variable": "Ventas (30 días)",
+      "mean_abs_shap": 0.015055901272534854,
+      "porcentaje_relativo": 3.3249068656991914
+    }
+  ],
+  "casos_representativos": {
+    "A": {
+      "publication_id": "MLC1882033437",
+      "probabilidad": 0.9583322425470239,
+      "valor_base": 0.18004210385976527,
+      "probabilidad_reconstruida": 0.9583322425470239,
+      "error_aditividad": 0
+    },
+    "B": {
+      "publication_id": "MLC1887635501",
+      "probabilidad": 0.9792288299355001,
+      "valor_base": 0.35972422408792115,
+      "probabilidad_reconstruida": 0.9792288299355,
+      "error_aditividad": 1.1102230246251565e-16
+    },
+    "C": {
+      "publication_id": "MLC1887635547",
+      "probabilidad": 0.9875010524406244,
+      "valor_base": 0.4602336720523138,
+      "probabilidad_reconstruida": 0.9875010524406244,
+      "error_aditividad": 0
+    }
+  },
+  "validacion_aditividad": {
+    "mean_absolute_error": 5.744993890574493e-06,
+    "max_absolute_error": 0.00642901163466196,
+    "tolerance": 0.0001,
+    "cumple_tolerancia": false,
+    "por_clase": {
+      "A": {
+        "mean_absolute_error": 8.617490835842205e-06,
+        "max_absolute_error": 0.006429011634661919
+      },
+      "B": {
+        "mean_absolute_error": 8.903133903462435e-07,
+        "max_absolute_error": 0.0007407407407407085
+      },
+      "C": {
+        "mean_absolute_error": 7.72717744553503e-06,
+        "max_absolute_error": 0.00642901163466196
+      }
+    },
+    "explicaciones_evaluadas": 832,
+    "explicaciones_dentro_tolerancia": 830,
+    "explicaciones_fuera_tolerancia": 2,
+    "excepciones": [
+      {
+        "publication_id": "MLC3856909388",
+        "categoria": "A",
+        "error_aditividad": 0.006429011634661919,
+        "cumple_tolerancia": false
+      },
+      {
+        "publication_id": "MLC3794506370",
+        "categoria": "B",
+        "error_aditividad": 0.0007407407407407085,
+        "cumple_tolerancia": false
+      }
+    ]
+  },
+  "figuras_generadas": [
+    "figura_shap_01_fidelidad_sustituto.png",
+    "figura_shap_02_importancia_global.png",
+    "figura_shap_03_importancia_por_categoria.png",
+    "figura_shap_04_casos_representativos.png",
+    "figura_shap_05_validacion_aditividad.png"
+  ],
+  "tablas_generadas": [
+    "tabla_shap_01_fidelidad_sustituto.csv",
+    "tabla_shap_02_importancia_global.csv",
+    "tabla_shap_03_importancia_por_categoria.csv",
+    "tabla_shap_04_casos_representativos.csv",
+    "tabla_shap_05_excepciones_aditividad.csv"
+  ]
+}
