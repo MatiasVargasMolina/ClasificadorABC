@@ -1,67 +1,66 @@
-import pytest
+import numpy as np
 import pandas as pd
-from app.preprocessing.scaler import ajustar_scaler, transformar_con_scaler, ajustar_y_transformar
+import pandas.testing as pdt
+import pytest
+
+from app.preprocessing.scaler import (
+    COLUMNAS_ESCALABLES,
+    ajustar_scaler,
+    ajustar_y_transformar,
+    preparar_variables,
+    transformar_con_scaler,
+)
 
 
-def crear_df_features():
-    return pd.DataFrame([
+def feature_frame():
+    return pd.DataFrame(
         {
-            "ventas_30d": 10,
-            "visitas_30d": 100,
-            "precio_actual": 15990,
-            "stock_actual": 5,
-            "en_promocion": 1
-        },
-        {
-            "ventas_30d": 2,
-            "visitas_30d": 40,
-            "precio_actual": 8990,
-            "stock_actual": 10,
-            "en_promocion": 0
+            "ventas_30d": [0, 1, 9],
+            "visitas_30d": [0, 9, 99],
+            "precio_actual": [1000.0, 2000.0, 4000.0],
         }
-    ])
+    )
 
 
-def test_ajustar_scaler_retorna_scaler():
-    df = crear_df_features()
-    scaler = ajustar_scaler(df)
-
-    assert scaler is not None
-
-
-def test_transformar_con_scaler_mantiene_en_promocion():
-    df = crear_df_features()
-    scaler = ajustar_scaler(df)
-    df_escalado = transformar_con_scaler(df, scaler)
-
-    assert df_escalado["en_promocion"].tolist() == [1, 0]
+def test_preparar_variables_applies_log1p_only_to_counts():
+    prepared = preparar_variables(feature_frame())
+    assert prepared["ventas_30d"].tolist() == pytest.approx(
+        np.log1p([0, 1, 9])
+    )
+    assert prepared["visitas_30d"].tolist() == pytest.approx(
+        np.log1p([0, 9, 99])
+    )
+    assert prepared["precio_actual"].tolist() == [1000.0, 2000.0, 4000.0]
 
 
-def test_transformar_con_scaler_modifica_variables_numericas():
-    df = crear_df_features()
-    scaler = ajustar_scaler(df)
-    df_escalado = transformar_con_scaler(df, scaler)
-
-    assert df_escalado["ventas_30d"].tolist() != df["ventas_30d"].tolist()
-
-
-def test_ajustar_y_transformar_retorna_dataframe_y_scaler():
-    df = crear_df_features()
-    df_escalado, scaler = ajustar_y_transformar(df)
-
-    assert df_escalado.shape == df.shape
-    assert scaler is not None
+def test_ajustar_y_transformar_standardizes_three_model_features():
+    scaled, scaler = ajustar_y_transformar(feature_frame())
+    assert scaled.columns.tolist() == COLUMNAS_ESCALABLES
+    assert scaled.mean().to_numpy() == pytest.approx([0.0, 0.0, 0.0])
+    assert scaler.n_features_in_ == 3
 
 
-def test_falla_si_faltan_columnas():
-    df = pd.DataFrame([
-        {
-            "ventas_30d": 10,
-            "visitas_30d": 100,
-            "stock_actual": 5,
-            "en_promocion": 1
-        }
-    ])
+def test_transformar_con_existing_scaler_is_reproducible():
+    source = feature_frame()
+    scaler = ajustar_scaler(source)
+    first = transformar_con_scaler(source, scaler)
+    second = transformar_con_scaler(source.copy(), scaler)
+    pdt.assert_frame_equal(first, second)
 
-    with pytest.raises(ValueError, match="Faltan columnas para escalar"):
-        ajustar_scaler(df)
+
+def test_scaler_preserves_extra_columns_but_does_not_scale_them():
+    source = feature_frame().assign(stock_actual=[1, 2, 3])
+    scaled, _ = ajustar_y_transformar(source)
+    assert scaled["stock_actual"].tolist() == [1, 2, 3]
+
+
+def test_scaler_rejects_missing_model_feature():
+    with pytest.raises(ValueError, match="Faltan columnas"):
+        ajustar_y_transformar(feature_frame().drop(columns=["precio_actual"]))
+
+
+def test_scaler_handles_constant_feature_without_nan_or_infinity():
+    source = feature_frame()
+    source["precio_actual"] = 1000.0
+    scaled, _ = ajustar_y_transformar(source)
+    assert np.isfinite(scaled.to_numpy()).all()

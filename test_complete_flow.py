@@ -1,111 +1,72 @@
-#!/usr/bin/env python3
-"""
-Script de prueba para validar el flujo completo de clasificación.
-"""
-
-from app.schemas.input_schema import RequestInput, ProductoInput
+from app.ml.core.config import SSEKMeansConfig
+from app.schemas.input_schema import RequestInput
 from app.services.clasificacion_service import ejecutar_clasificacion
 
 
-def test_complete_flow():
-    """Prueba el flujo completo de preprocesamiento -> kmeans -> resultados"""
-    
-    # Crear datos de prueba
-    productos = [
-        ProductoInput(
-            publication_id="pub1",
-            ventas_30d=100,
-            visitas_30d=500,
-            precio_actual=50.0,
-            stock_actual=10,
-            en_promocion=False,
-            etiqueta_abc_opcional="A",  # Semilla para clase A
-        ),
-        ProductoInput(
-            publication_id="pub2",
-            ventas_30d=50,
-            visitas_30d=200,
-            precio_actual=30.0,
-            stock_actual=5,
-            en_promocion=True,
-            etiqueta_abc_opcional="B",  # Semilla para clase B
-        ),
-        ProductoInput(
-            publication_id="pub3",
-            ventas_30d=10,
-            visitas_30d=50,
-            precio_actual=10.0,
-            stock_actual=50,
-            en_promocion=False,
-            etiqueta_abc_opcional=None,  # Sin etiqueta
-        ),
-        ProductoInput(
-            publication_id="pub4",
-            ventas_30d=200,
-            visitas_30d=1000,
-            precio_actual=100.0,
-            stock_actual=5,
-            en_promocion=False,
-            etiqueta_abc_opcional=None,  # Sin etiqueta
-        ),
-        ProductoInput(
-            publication_id="pub5",
-            ventas_30d=5,
-            visitas_30d=20,
-            precio_actual=5.0,
-            stock_actual=100,
-            en_promocion=True,
-            etiqueta_abc_opcional=None,  # Sin etiqueta
-        ),
-    ]
-    
-    request = RequestInput(productos=productos)
-    
-    print("=" * 60)
-    print("PRUEBA DE FLUJO COMPLETO DE CLASIFICACIÓN")
-    print("=" * 60)
-    print(f"\n📦 Productos de entrada: {len(productos)}\n")
-    
-    try:
-        resultado = ejecutar_clasificacion(request)
-        
-        print(f"✅ Clasificación completada exitosamente\n")
-        print(f"📊 Resultado:")
-        print(f"  - Mensaje: {resultado['mensaje']}")
-        print(f"  - Productos válidos: {resultado['productos_validos']}")
-        print(f"  - Productos inválidos: {resultado['productos_invalidos']}")
-        print(f"\n📈 Diagnóstico:")
-        diagnostico = resultado["diagnostico"]
-        print(f"  - Capacidades objetivo: {diagnostico['capacidades_objetivo']}")
-        print(f"  - Conteos finales: {diagnostico['conteos_finales']}")
-        print(f"  - Semillas usadas: {diagnostico['semillas_usadas']}")
-        print(f"  - Iteraciones: {diagnostico['iteraciones']}")
-        print(f"  - Inertia: {diagnostico['inertia']:.4f}")
-        print(f"  - Métricas internas:")
-        for metrica, valor in diagnostico["metricas"].items():
-            print(f"    • {metrica}: {valor}")
-        
-        print(f"\n🎯 Resultados de clasificación:")
-        for i, resultado_prod in enumerate(resultado["resultados"], 1):
-            print(f"  {i}. ID: {resultado_prod['publication_id']}")
-            print(f"     Categoría: {resultado_prod['categoria']}")
-            print(f"     Score inicial: {resultado_prod['score_inicial']:.4f}")
-            print(f"     Es semilla: {resultado_prod['es_semilla']}")
-        
-        print("\n" + "=" * 60)
-        print("✅ PRUEBA COMPLETADA EXITOSAMENTE")
-        print("=" * 60)
-        
-        return True
-        
-    except Exception as e:
-        print(f"\n❌ ERROR durante la clasificación:")
-        print(f"  {type(e).__name__}: {str(e)}\n")
-        import traceback
-        traceback.print_exc()
-        return False
+def synthetic_products():
+    products = []
+    for index in range(20):
+        if index < 4:
+            sales = 20 - index
+            visits = 100 - index * 5
+            price = 9000 + index * 100
+        elif index < 10:
+            sales = 3
+            visits = 15 + index
+            price = 30000 + index * 100
+        else:
+            sales = 0
+            visits = index - 9
+            price = 7000 + index * 50
+        products.append(
+            {
+                "publication_id": f"MLC-{index:02d}",
+                "ventas_30d": sales,
+                "visitas_30d": visits,
+                "precio_actual": price,
+                "stock_actual": 10,
+                "en_promocion": False,
+            }
+        )
+    return products
 
 
-if __name__ == "__main__":
-    success = test_complete_flow()
-    exit(0 if success else 1)
+def test_complete_classification_flow_without_external_seed_labels(
+    monkeypatch,
+):
+    test_config = SSEKMeansConfig(
+        max_iter=100,
+        tol=1e-6,
+        n_init=5,
+        random_state=42,
+        shuffle_unlabeled=True,
+    )
+    monkeypatch.setattr(
+        "app.services.kmeans_service.get_production_config",
+        lambda proportions=None: test_config,
+    )
+    request = RequestInput(productos=synthetic_products())
+    result = ejecutar_clasificacion(request)
+    assert result["mensaje"] == "Clasificación ejecutada correctamente"
+    assert result["productos_validos"] == 20
+    assert result["productos_invalidos"] == []
+    assert len(result["resultados"]) == 20
+    assert result["diagnostico"]["capacidades_objetivo"] == {
+        "A": 4,
+        "B": 6,
+        "C": 10,
+    }
+    assert result["diagnostico"]["conteos_finales"] == {
+        "A": 4,
+        "B": 6,
+        "C": 10,
+    }
+    assert {row["categoria"] for row in result["resultados"]} == {
+        "A",
+        "B",
+        "C",
+    }
+    assert all(
+        "etiqueta_abc_opcional" not in row
+        for row in result["resultados"]
+    )

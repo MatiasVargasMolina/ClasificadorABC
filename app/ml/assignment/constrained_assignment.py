@@ -36,6 +36,30 @@ def assign_with_capacity(
     del rng
     del shuffle_unlabeled
 
+    missing_labels = [
+        label
+        for label in LABELS_ABC
+        if label not in capacities
+    ]
+
+    if missing_labels:
+        raise ValueError(
+            "No se encontró capacidad para las categorías: "
+            f"{missing_labels}."
+        )
+
+    negative_capacities = {
+        label: capacities[label]
+        for label in LABELS_ABC
+        if capacities[label] < 0
+    }
+
+    if negative_capacities:
+        raise ValueError(
+            "Las capacidades no pueden ser negativas: "
+            f"{negative_capacities}."
+        )
+
     total_capacity = sum(
         capacities[label]
         for label in LABELS_ABC
@@ -56,18 +80,7 @@ def assign_with_capacity(
     slot_labels: list[str] = []
 
     for label in LABELS_ABC:
-        capacity = capacities.get(label)
-
-        if capacity is None:
-            raise ValueError(
-                f"No se encontró capacidad para la categoría {label}."
-            )
-
-        if capacity < 0:
-            raise ValueError(
-                f"La capacidad de {label} no puede ser negativa."
-            )
-
+        capacity = capacities[label]
         slot_labels.extend([label] * capacity)
 
     slot_positions = np.array(
