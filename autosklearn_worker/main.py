@@ -82,6 +82,8 @@ SHAP_NSAMPLES = int(
     )
 )
 
+ARTIFACT_VERSION = 3
+
 
 class TrainRow(BaseModel):
     publication_id: str
@@ -135,6 +137,8 @@ app = FastAPI(
 @app.get("/health")
 def health():
     artifact_features = None
+    artifact_version = None
+    categories_available = False
     artifacts_compatible = False
 
     if META_PATH.exists():
@@ -143,9 +147,25 @@ def health():
             artifact_features = meta.get(
                 "feature_columns"
             )
+            artifact_version = meta.get(
+                "artifact_version"
+            )
+            categories_by_publication = meta.get(
+                "categoria_ss_ekmeans_por_publicacion"
+            )
+            categories_available = (
+                isinstance(
+                    categories_by_publication,
+                    dict,
+                )
+                and bool(categories_by_publication)
+            )
             artifacts_compatible = (
                 artifact_features
                 == FEATURE_COLUMNS
+                and artifact_version
+                == ARTIFACT_VERSION
+                and categories_available
             )
         except Exception:
             artifacts_compatible = False
@@ -162,6 +182,13 @@ def health():
         "feature_columns": FEATURE_COLUMNS,
         "artifact_feature_columns": (
             artifact_features
+        ),
+        "artifact_version": artifact_version,
+        "required_artifact_version": (
+            ARTIFACT_VERSION
+        ),
+        "categories_ss_ekmeans_available": (
+            categories_available
         ),
         "artifacts_compatible": (
             artifacts_compatible
@@ -260,6 +287,27 @@ def load_artifacts():
         raise RuntimeError(
             "El background SHAP no coincide con las variables "
             "del worker. Ejecuta /train nuevamente."
+        )
+
+    artifact_version = meta.get(
+        "artifact_version"
+    )
+    categories_by_publication = meta.get(
+        "categoria_ss_ekmeans_por_publicacion"
+    )
+
+    if (
+        artifact_version != ARTIFACT_VERSION
+        or not isinstance(
+            categories_by_publication,
+            dict,
+        )
+        or not categories_by_publication
+    ):
+        raise RuntimeError(
+            "Los artefactos no conservan las categorías "
+            "SS-EKMeans necesarias para evaluar la concordancia. "
+            "Ejecuta /train nuevamente."
         )
 
     return model, background, meta
@@ -478,10 +526,21 @@ def train(
         X_train
     )
 
+    categoria_ss_ekmeans_por_publicacion = {
+        str(publication_id): str(categoria)
+        for publication_id, categoria in zip(
+            df["publication_id"],
+            y,
+        )
+    }
+
     meta = {
-        "artifact_version": 2,
+        "artifact_version": ARTIFACT_VERSION,
         "feature_columns": (
             FEATURE_COLUMNS.copy()
+        ),
+        "categoria_ss_ekmeans_por_publicacion": (
+            categoria_ss_ekmeans_por_publicacion
         ),
         "metrics": metrics,
         "classes": classes,
@@ -638,10 +697,28 @@ def explain(
     )
 
     predicciones = []
+    categories_by_publication = meta[
+        "categoria_ss_ekmeans_por_publicacion"
+    ]
 
     for row_index in range(len(X)):
+        publication_id = str(
+            df.iloc[row_index][
+                "publication_id"
+            ]
+        )
         prediction = str(
             predictions[row_index]
+        )
+        categoria_ss_ekmeans = (
+            categories_by_publication.get(
+                publication_id
+            )
+        )
+        concordancia = (
+            categoria_ss_ekmeans == prediction
+            if categoria_ss_ekmeans is not None
+            else None
         )
 
         if prediction not in classes:
@@ -697,11 +774,12 @@ def explain(
 
         predicciones.append(
             {
-                "publication_id": str(
-                    df.iloc[row_index][
-                        "publication_id"
-                    ]
+                "publication_id": publication_id,
+                "categoria_ss_ekmeans": (
+                    categoria_ss_ekmeans
                 ),
+                "categoria_sustituto": prediction,
+                "concordancia": concordancia,
                 "prediccion": prediction,
                 "probabilidades": (
                     probability_by_class
@@ -729,6 +807,43 @@ def explain(
                 ),
             }
         )
+
+    total_comparables = sum(
+        item["concordancia"] is not None
+        for item in predicciones
+    )
+    coincidencias = sum(
+        item["concordancia"] is True
+        for item in predicciones
+    )
+    discrepancias = sum(
+        item["concordancia"] is False
+        for item in predicciones
+    )
+    sin_categoria_ss_ekmeans = (
+        len(predicciones) - total_comparables
+    )
+    tasa_concordancia = (
+        coincidencias / total_comparables
+        if total_comparables
+        else None
+    )
+
+    resumen_concordancia = {
+        "total_explicados": len(predicciones),
+        "total_comparables": total_comparables,
+        "coincidencias": coincidencias,
+        "discrepancias": discrepancias,
+        "sin_categoria_ss_ekmeans": (
+            sin_categoria_ss_ekmeans
+        ),
+        "tasa_concordancia": tasa_concordancia,
+        "porcentaje_concordancia": (
+            tasa_concordancia * 100
+            if tasa_concordancia is not None
+            else None
+        ),
+    }
 
     return {
         "mensaje": (
@@ -782,6 +897,9 @@ def explain(
         },
         "validacion_aditividad": (
             validacion_aditividad
+        ),
+        "resumen_concordancia": (
+            resumen_concordancia
         ),
         "importancia_global": (
             importancia_global
