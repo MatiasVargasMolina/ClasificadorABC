@@ -111,9 +111,15 @@ def test_complete_kernel_shap_explanation_flow(
     )
 
     metadata = {
+        "artifact_version": worker.ARTIFACT_VERSION,
         "feature_columns": (
             worker.FEATURE_COLUMNS.copy()
         ),
+        "categoria_ss_ekmeans_por_publicacion": {
+            "MLC-A": "A",
+            "MLC-B": "B",
+            "MLC-C": "A",
+        },
         "metrics": {
             "accuracy": 1.0,
             "balanced_accuracy": 1.0,
@@ -206,7 +212,7 @@ def test_complete_kernel_shap_explanation_flow(
     assert len(predictions) == 3
 
     predicted_categories = {
-        prediction["prediccion"]
+        prediction["categoria_sustituto"]
         for prediction in predictions
     }
 
@@ -216,7 +222,31 @@ def test_complete_kernel_shap_explanation_flow(
         "C",
     }
 
+    expected_ss_categories = {
+        "MLC-A": "A",
+        "MLC-B": "B",
+        "MLC-C": "A",
+    }
+
     for prediction in predictions:
+        assert (
+            prediction["categoria_ss_ekmeans"]
+            == expected_ss_categories[
+                prediction["publication_id"]
+            ]
+        )
+        assert (
+            prediction["prediccion"]
+            == prediction["categoria_sustituto"]
+        )
+        assert (
+            prediction["concordancia"]
+            == (
+                prediction["categoria_ss_ekmeans"]
+                == prediction["categoria_sustituto"]
+            )
+        )
+
         assert set(
             prediction["probabilidades"]
         ) == {
@@ -258,6 +288,23 @@ def test_complete_kernel_shap_explanation_flow(
             "visitas_30d",
             "precio_actual",
         }
+
+    concordance = result["resumen_concordancia"]
+    assert concordance["total_explicados"] == 3
+    assert concordance["total_comparables"] == 3
+    assert concordance["coincidencias"] == 2
+    assert concordance["discrepancias"] == 1
+    assert concordance[
+        "sin_categoria_ss_ekmeans"
+    ] == 0
+    assert np.isclose(
+        concordance["tasa_concordancia"],
+        2 / 3,
+    )
+    assert np.isclose(
+        concordance["porcentaje_concordancia"],
+        200 / 3,
+    )
 
     assert {
         item["feature"]
