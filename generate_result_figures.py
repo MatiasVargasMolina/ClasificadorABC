@@ -14,13 +14,13 @@ Ejemplo ejecutando nuevamente la clasificación:
 
     python generate_result_figures.py ^
         --input-request data/input_request.json ^
-        --output-dir artifacts/result_figures_v2
+        --output-dir artifacts/result_figures_final
 
 Ejemplo utilizando una respuesta existente:
 
     python generate_result_figures.py ^
         --classification-response data/classification_response.json ^
-        --output-dir artifacts/result_figures_v2
+        --output-dir artifacts/result_figures_final
 """
 
 import argparse
@@ -135,10 +135,13 @@ def aplicar_estilo() -> None:
     plt.rcParams.update(
         {
             "font.family": "DejaVu Sans",
-            "font.size": 10,
-            "axes.titlesize": 13,
+            "font.size": 12,
+            "axes.titlesize": 15,
             "axes.titleweight": "bold",
-            "axes.labelsize": 10,
+            "axes.labelsize": 12,
+            "xtick.labelsize": 10.5,
+            "ytick.labelsize": 10.5,
+            "legend.fontsize": 10.5,
             "axes.edgecolor": COLOR_EJES,
             "axes.labelcolor": COLOR_TEXTO,
             "xtick.color": COLOR_TEXTO,
@@ -148,6 +151,7 @@ def aplicar_estilo() -> None:
             "axes.facecolor": "white",
             "savefig.facecolor": "white",
             "savefig.bbox": "tight",
+            "savefig.pad_inches": 0.12,
         }
     )
 
@@ -490,7 +494,7 @@ def generar_mapa_calor_perfil(
         max_abs = 1.0
 
     fig, ax = plt.subplots(
-        figsize=(9.8, 4.7)
+        figsize=(7.2, 4.8)
     )
 
     imagen = ax.imshow(
@@ -547,7 +551,7 @@ def generar_mapa_calor_perfil(
                 va="center",
                 color=color_texto,
                 fontweight="bold",
-                fontsize=10,
+                fontsize=11,
             )
 
     colorbar = fig.colorbar(
@@ -569,7 +573,7 @@ def generar_mapa_calor_perfil(
             "valores negativos indican un nivel inferior."
         ),
         ha="center",
-        fontsize=8.5,
+        fontsize=9.5,
         color=COLOR_EJES,
     )
 
@@ -600,7 +604,7 @@ def generar_dispersion_ventas_visitas(
     categorias = categorias_presentes(df)
 
     fig, ax = plt.subplots(
-        figsize=(9.5, 6.1)
+        figsize=(7.2, 5.5)
     )
 
     ventas_log = np.log1p(
@@ -651,7 +655,7 @@ def generar_dispersion_ventas_visitas(
             xytext=(7, 6),
             textcoords="offset points",
             fontweight="bold",
-            fontsize=9,
+            fontsize=10,
         )
 
     ax.set_title(
@@ -679,7 +683,7 @@ def generar_dispersion_ventas_visitas(
             "sin alterar el orden de las observaciones."
         ),
         ha="center",
-        fontsize=8.5,
+        fontsize=9.5,
         color=COLOR_EJES,
     )
 
@@ -744,7 +748,7 @@ def generar_grafico_silueta(
     )
 
     fig, ax = plt.subplots(
-        figsize=(8.6, 6.4)
+        figsize=(7.2, 5.8)
     )
 
     posicion_inicial = espacio
@@ -906,19 +910,6 @@ def generar_pca_centroides(
         .tolist()
     )
 
-    fig, axes = plt.subplots(
-        1,
-        2,
-        figsize=(12.3, 5.6),
-    )
-
-    limites_completos = (
-        float(df_pca["CP1"].min()),
-        float(df_pca["CP1"].max()),
-        float(df_pca["CP2"].min()),
-        float(df_pca["CP2"].max()),
-    )
-
     limite_central_x = np.percentile(
         df_pca["CP1"],
         [1, 99],
@@ -929,130 +920,89 @@ def generar_pca_centroides(
         [1, 99],
     )
 
-    configuraciones = (
-        (
-            axes[0],
-            "Vista completa",
-            (
-                limites_completos[0],
-                limites_completos[1],
-            ),
-            (
-                limites_completos[2],
-                limites_completos[3],
-            ),
-        ),
-        (
-            axes[1],
-            "Región central (percentiles 1–99)",
-            (
-                float(limite_central_x[0]),
-                float(limite_central_x[1]),
-            ),
-            (
-                float(limite_central_y[0]),
-                float(limite_central_y[1]),
-            ),
-        ),
+    fig, ax = plt.subplots(
+        figsize=(7.2, 5.8)
     )
 
-    for ax, titulo, limites_x, limites_y in configuraciones:
-        for categoria in categorias:
-            grupo = df_pca[
-                df_pca["categoria"] == categoria
-            ]
+    for indice, categoria in enumerate(
+        categorias
+    ):
+        grupo = df_pca[
+            df_pca["categoria"] == categoria
+        ]
 
-            ax.scatter(
-                grupo["CP1"],
-                grupo["CP2"],
-                s=20,
-                alpha=0.58,
-                color=COLORES_CATEGORIA[categoria],
-                edgecolors="none",
-            )
-
-            indice_categoria = categorias.index(
-                categoria
-            )
-
-            centro_x = float(
-                centroides_pca[
-                    indice_categoria,
-                    0,
-                ]
-            )
-
-            centro_y = float(
-                centroides_pca[
-                    indice_categoria,
-                    1,
-                ]
-            )
-
-            ax.scatter(
-                centro_x,
-                centro_y,
-                marker="X",
-                s=145,
-                color=COLORES_CATEGORIA[categoria],
-                edgecolors="white",
-                linewidths=1.2,
-                zorder=5,
-            )
-
-            ax.annotate(
-                categoria,
-                (centro_x, centro_y),
-                xytext=(6, 6),
-                textcoords="offset points",
-                fontweight="bold",
-            )
-
-        ax.set_title(titulo)
-
-        ax.set_xlabel(
-            f"CP1 ({varianza[0] * 100:.1f}% de varianza)"
+        ax.scatter(
+            grupo["CP1"],
+            grupo["CP2"],
+            s=30,
+            alpha=0.62,
+            color=COLORES_CATEGORIA[categoria],
+            edgecolors="white",
+            linewidths=0.25,
         )
 
-        ax.set_ylabel(
-            f"CP2 ({varianza[1] * 100:.1f}% de varianza)"
+        centro_x = float(
+            centroides_pca[indice, 0]
         )
 
-        ax.set_xlim(*limites_x)
-        ax.set_ylim(*limites_y)
+        centro_y = float(
+            centroides_pca[indice, 1]
+        )
 
-        estilizar_eje(ax)
+        ax.scatter(
+            centro_x,
+            centro_y,
+            marker="X",
+            s=220,
+            color=COLORES_CATEGORIA[categoria],
+            edgecolors="white",
+            linewidths=1.6,
+            zorder=5,
+        )
 
-    fig.suptitle(
-        "Proyección PCA de las publicaciones y centroides por categoría",
-        y=1.02,
-        fontsize=13,
-        fontweight="bold",
+        ax.annotate(
+            f"Centro {categoria}",
+            (centro_x, centro_y),
+            xytext=(8, 8),
+            textcoords="offset points",
+            fontsize=11,
+            fontweight="bold",
+        )
+
+    ax.set_title(
+        "Proyección PCA de las publicaciones y centroides",
+        pad=54,
     )
 
-    fig.legend(
+    ax.set_xlabel(
+        f"CP1 ({varianza[0] * 100:.1f}% de varianza)"
+    )
+
+    ax.set_ylabel(
+        f"CP2 ({varianza[1] * 100:.1f}% de varianza)"
+    )
+
+    ax.set_xlim(
+        float(limite_central_x[0]),
+        float(limite_central_x[1]),
+    )
+
+    ax.set_ylim(
+        float(limite_central_y[0]),
+        float(limite_central_y[1]),
+    )
+
+    ax.legend(
         handles=leyenda_categorias(categorias),
         loc="upper center",
-        bbox_to_anchor=(0.5, 0.99),
+        bbox_to_anchor=(0.5, 1.10),
         ncol=len(categorias),
         frameon=False,
     )
 
-    fig.text(
-        0.5,
-        0.01,
-        (
-            "La vista ampliada evita que las observaciones extremas "
-            "oculten la estructura de la zona central."
-        ),
-        ha="center",
-        fontsize=8.5,
-        color=COLOR_EJES,
-    )
+    estilizar_eje(ax)
 
-    fig.tight_layout(
-        rect=(0, 0.04, 1, 0.94)
-    )
+    fig.tight_layout()
 
     output_path = (
         output_dir
