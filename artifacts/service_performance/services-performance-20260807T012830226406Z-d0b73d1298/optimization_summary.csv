@@ -1,0 +1,2 @@
+﻿servicio,endpoint,publicaciones,repeticiones,latencia_mediana_s,latencia_min_s,latencia_max_s,tiempo_interno_mediana_s,memoria_maxima_mb,publicaciones_por_segundo_mediana
+optimizacion_optuna,/optimization/optuna,832,1,777.3347994,777.3347994,777.3347994,,174.52,

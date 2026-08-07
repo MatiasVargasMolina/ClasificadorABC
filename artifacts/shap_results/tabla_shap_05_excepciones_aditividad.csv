@@ -1,3 +1,1 @@
-﻿publication_id,categoria,error_aditividad,cumple_tolerancia
-MLC3856909388,A,0.006429011634661919,False
-MLC3794506370,B,0.0007407407407407085,False
+﻿id_ejecucion,id_ejecucion_entrenamiento,publication_id,categoria_ss_ekmeans,categoria_sustituto,concordancia,error_aditividad,cumple_tolerancia

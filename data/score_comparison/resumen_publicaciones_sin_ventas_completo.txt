@@ -1,0 +1,30 @@
+ANÁLISIS AMPLIADO DE PUBLICACIONES SIN VENTAS
+
+1. Consecuencia de la capacidad fija
+La categoría A contiene 166 publicaciones. Existen 54 publicaciones con ventas y 54 de ellas fueron asignadas a A.
+Todas las publicaciones con ventas están en A: sí. Con la capacidad actual, A debe contener 112 publicaciones sin ventas.
+
+2. Evidencia basada en visitas
+Los A sin ventas presentan una media de 10,85 y una mediana de 7,00 visitas. B presenta 2,86 y 1,00; C presenta 0,58 y 0,00, respectivamente.
+La proporción con al menos una visita es 100,00 % en A, 58,40 % en B y 40,87 % en C.
+Kruskal-Wallis para visitas: H=320,6324, p < 0,001.
+En las comparaciones por pares, A supera a B con delta de Cliff=0,8765 (grande) y a C con delta=0,9982 (grande); en ambos casos, p ajustado < 0,001.
+Asociación entre categoría y presencia de visitas: chi-cuadrado=126,3910, p < 0,001, V de Cramér=0,4031.
+
+3. Papel del precio
+El precio medio (mediano) de los A sin ventas es $19.949 ($19.999); en B es $39.187 ($39.999) y en C $17.337 ($19.999).
+Kruskal-Wallis para precio: H=504,8814, p < 0,001. Sin embargo, entre A y C, aunque p ajustado 0,014, el tamaño del efecto es despreciable (delta de Cliff=0,1451). La significación estadística no implica relevancia práctica: el precio no justifica por sí solo que los casos pertenezcan a A. Debe interpretarse como nivel de precio de la oferta, no como capital, rentabilidad ni desempeño.
+
+4. Compatibilidad directa y efecto de la capacidad
+Con los centroides finales fijados, 63 publicaciones A sin ventas (56,25 %) tienen a A como centroide más cercano.
+Las 49 restantes (43,75 %) fueron asignadas a A por la solución global capacitada, aunque otro centroide final queda más cerca en la comparación punto a punto; por ello se consideran casos fronterizos o sensibles a la capacidad.
+El grupo directamente compatible presenta una mediana de 13,00 visitas; el grupo fronterizo, 4,00.
+La diferencia de visitas entre ambos subgrupos es significativa (U=2932, p ajustado < 0,001, delta de Cliff=0,8996, efecto grande).
+Para precio no se detecta una diferencia significativa entre los subgrupos (U=1230, p ajustado 0,057, delta de Cliff=-0,2031, efecto pequeño).
+La comparación conserva los centroides finales y evalúa distancias punto a punto; no corresponde a una nueva ejecución de K-means sin restricciones de capacidad.
+
+5. Verificación de la partición reconstruida
+Silhouette=0,3707166, Davies-Bouldin=1,1091268, Calinski-Harabasz=354,6279470, inercia=1345,1494046.
+
+Interpretación final
+Los resultados entregan evidencia de coherencia interna para una parte de los A sin ventas, principalmente por su exposición. No constituyen validación externa ni demuestran rentabilidad o desempeño futuro. La categoría A debe interpretarse como prioridad relativa de gestión.

@@ -1,0 +1,4 @@
+﻿categoria,publicaciones_categoria,publicaciones_con_ventas,publicaciones_sin_ventas,sin_ventas_pct_categoria,visitas_total,visitas_media,visitas_q25,visitas_mediana,visitas_q75,visitas_maximo,publicaciones_con_visitas,publicaciones_con_visitas_pct,precio_media,precio_q25,precio_mediana,precio_q75,precio_minimo,precio_maximo,centroide_asignado_es_mas_cercano,centroide_asignado_es_mas_cercano_pct,margen_asignacion_medio,margen_asignacion_mediano
+A,166,54,112,67.4698795181,1215,10.8482142857,4,7,14,77,112,100,19948.6339286,15749,19999,24999,4999,43999,63,56.25,1.0030040481,0.428031131665
+B,250,0,250,100,714,2.856,0,1,2,99,146,58.4,39187,29999,39999,39999,24999,84999,246,98.4,2.63429985415,2.55325731047
+C,416,0,416,100,242,0.581730769231,0,0,1,3,170,40.8653846154,17336.6947115,9999,19999,20999,4990,25999,416,100,2.7616259231,2.46391124023

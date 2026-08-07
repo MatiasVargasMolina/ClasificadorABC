@@ -1,0 +1,10 @@
+﻿prueba,variable,categoria_1,categoria_2,n_1,n_2,media_1,media_2,mediana_1,mediana_2,estadistico_u,p_valor,delta_cliff,magnitud_efecto,p_ajustado_holm,diferencia_significativa,proporcion_1,proporcion_2,diferencia_puntos_porcentuales,odds_ratio
+Mann-Whitney U,visitas_30d,A,B,112,250,10.8482142857,2.856,7,1,26271,9.36694936483e-42,0.8765,grande,1.87338987297e-41,True,,,,
+Mann-Whitney U,visitas_30d,A,C,112,416,10.8482142857,0.581730769231,7,0,46550,2.13021277384e-66,0.998197115385,grande,6.39063832151e-66,True,,,,
+Mann-Whitney U,visitas_30d,B,C,250,416,2.856,0.581730769231,1,0,65546,7.27420518541e-10,0.2605,pequeño,7.27420518541e-10,True,,,,
+Mann-Whitney U,precio_actual,A,B,112,250,19948.6339286,39187,19999,39999,1242,8.9726355801e-45,-0.911285714286,grande,1.79452711602e-44,True,,,,
+Mann-Whitney U,precio_actual,A,C,112,416,19948.6339286,17336.6947115,19999,19999,26676,0.0142034088963,0.145089285714,despreciable,0.0142034088963,True,,,,
+Mann-Whitney U,precio_actual,B,C,250,416,39187,17336.6947115,39999,19999,103878,1.52072499715e-105,0.997653846154,grande,4.56217499144e-105,True,,,,
+Fisher exacta,presencia_de_visitas,A,B,,,,,,,,4.46895591553e-21,,,8.93791183106e-21,True,1,0.584,41.6,inf
+Fisher exacta,presencia_de_visitas,A,C,,,,,,,,8.81412687728e-37,,,2.64423806319e-36,True,1,0.408653846154,59.1346153846,inf
+Fisher exacta,presencia_de_visitas,B,C,,,,,,,,1.43752352472e-05,,,1.43752352472e-05,True,0.584,0.408653846154,17.5346153846,2.0314479638

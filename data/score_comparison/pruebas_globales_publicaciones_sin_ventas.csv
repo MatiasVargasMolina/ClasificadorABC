@@ -1,0 +1,4 @@
+﻿prueba,variable,descripcion,estadistico,grados_libertad,p_valor,interpretacion,cramers_v
+Kruskal-Wallis,visitas_30d,Visitas de publicaciones sin ventas,320.632386981,2,2.37444332178e-70,Existen diferencias entre categorías,
+Kruskal-Wallis,precio_actual,Precio de publicaciones sin ventas,504.881350652,2,2.32491831042e-110,Existen diferencias entre categorías,
+Chi-cuadrado de independencia,presencia_de_visitas,,126.390980378,2,3.58548020997e-28,Asociación interna entre categoría y presencia de visitas,0.403058647072

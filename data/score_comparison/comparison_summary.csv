@@ -1,0 +1,3 @@
+﻿metodo,publicaciones,cantidad_A,cantidad_B,cantidad_C,silhouette,davies_bouldin,calinski_harabasz,inercia,tiempo_segundos,ventas_en_A,ventas_en_A_pct,visitas_en_A,visitas_en_A_pct,valor_transado_en_A,valor_transado_en_A_pct,publicaciones_con_ventas_en_A,publicaciones_con_ventas_en_A_pct,iteraciones,convergio,motivo_termino,corridas_convergentes,corridas_descartadas
+score_normalizado,832,166,250,416,0.234459,1.702147,214.279912,1645.396077,0.029980,117.000000,95.121951,4360.000000,84.775423,2145719.000000,98.350195,48,28.915663,0,True,ordenamiento_determinista,,
+ss_ekmeans,832,166,250,416,0.370717,1.109127,354.627947,1345.149405,11.309107,123.000000,100.000000,4187.000000,81.411627,2181713.000000,100.000000,54,32.530120,9,True,center_shift,10.000000,0.000000

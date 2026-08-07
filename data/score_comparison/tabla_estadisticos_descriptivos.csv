@@ -1,0 +1,7 @@
+﻿Método,Categoría,Media ventas,Mediana ventas,Media visitas,Mediana visitas,Precio medio,Precio mediano,Valor transado medio,Valor transado mediano
+Score normalizado,A,"0,70","0,00","26,27","10,50",$34.341,$34.999,$12.926,$0
+Score normalizado,B,"0,02","0,00","2,38","1,00",$28.335,$29.999,$144,$0
+Score normalizado,C,"0,00","0,00","0,45","0,00",$17.882,$19.999,$0,$0
+SS-EKMeans,A,"0,74","0,00","25,22","10,00",$19.365,$19.999,$13.143,$0
+SS-EKMeans,B,"0,00","0,00","2,86","1,00",$39.187,$39.999,$0,$0
+SS-EKMeans,C,"0,00","0,00","0,58","0,00",$17.337,$19.999,$0,$0

@@ -1,0 +1,5 @@
+﻿grupo,n,porcentaje_de_A_sin_ventas,visitas_media,visitas_mediana,visitas_q25,visitas_q75,precio_media,precio_mediana,margen_asignacion_medio,margen_asignacion_mediano
+A es el centroide más cercano,63,56.25,15.3650793651,13,8,18.5,18665.0793651,19999,2.47939127059,1.93404912442
+Caso fronterizo por capacidad,49,43.75,5.04081632653,4,4,5,21598.9183673,19999,-0.895208095106,-0.899974733212
+Más cercano a B,9,8.03571428571,9.22222222222,8,5,13,34487.4444444,32999,-0.928532406431,-1.04902649608
+Más cercano a C,40,35.7142857143,4.1,4,4,4.25,18699,19999,-0.887710125057,-0.899974733212

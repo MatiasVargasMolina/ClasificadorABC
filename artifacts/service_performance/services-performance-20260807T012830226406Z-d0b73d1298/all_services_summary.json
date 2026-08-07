@@ -1,0 +1,167 @@
+{
+  "id_ejecucion": "services-performance-20260807T012830226406Z-d0b73d1298",
+  "servicios": [
+    {
+      "servicio": "clasificacion",
+      "endpoint": "/api/clasificar",
+      "publicaciones": 20,
+      "repeticiones": 10,
+      "latencia_mediana_s": 0.25070800000000004,
+      "latencia_min_s": 0.2030664,
+      "latencia_max_s": 0.7250398,
+      "tiempo_interno_mediana_s": null,
+      "memoria_maxima_mb": 159.676,
+      "publicaciones_por_segundo_mediana": 79.7740805
+    },
+    {
+      "servicio": "clasificacion",
+      "endpoint": "/api/clasificar",
+      "publicaciones": 50,
+      "repeticiones": 10,
+      "latencia_mediana_s": 0.5559526,
+      "latencia_min_s": 0.3541706,
+      "latencia_max_s": 0.688702,
+      "tiempo_interno_mediana_s": null,
+      "memoria_maxima_mb": 159.785,
+      "publicaciones_por_segundo_mediana": 92.3582825
+    },
+    {
+      "servicio": "clasificacion",
+      "endpoint": "/api/clasificar",
+      "publicaciones": 100,
+      "repeticiones": 10,
+      "latencia_mediana_s": 0.6218026,
+      "latencia_min_s": 0.5658075,
+      "latencia_max_s": 1.1511856,
+      "tiempo_interno_mediana_s": null,
+      "memoria_maxima_mb": 160.168,
+      "publicaciones_por_segundo_mediana": 160.82726350000002
+    },
+    {
+      "servicio": "clasificacion",
+      "endpoint": "/api/clasificar",
+      "publicaciones": 250,
+      "repeticiones": 10,
+      "latencia_mediana_s": 1.17824825,
+      "latencia_min_s": 0.9824601,
+      "latencia_max_s": 1.6456678,
+      "tiempo_interno_mediana_s": null,
+      "memoria_maxima_mb": 161.984,
+      "publicaciones_por_segundo_mediana": 212.7048125
+    },
+    {
+      "servicio": "clasificacion",
+      "endpoint": "/api/clasificar",
+      "publicaciones": 500,
+      "repeticiones": 10,
+      "latencia_mediana_s": 1.7718517500000002,
+      "latencia_min_s": 1.691641,
+      "latencia_max_s": 2.2431526,
+      "tiempo_interno_mediana_s": null,
+      "memoria_maxima_mb": 166.543,
+      "publicaciones_por_segundo_mediana": 282.191825
+    },
+    {
+      "servicio": "clasificacion",
+      "endpoint": "/api/clasificar",
+      "publicaciones": 832,
+      "repeticiones": 10,
+      "latencia_mediana_s": 6.55327305,
+      "latencia_min_s": 5.9003866,
+      "latencia_max_s": 11.2246826,
+      "tiempo_interno_mediana_s": null,
+      "memoria_maxima_mb": 174.055,
+      "publicaciones_por_segundo_mediana": 126.959533
+    },
+    {
+      "servicio": "optimizacion_optuna",
+      "endpoint": "/optimization/optuna",
+      "publicaciones": 832,
+      "repeticiones": 1,
+      "latencia_mediana_s": 777.3347994,
+      "latencia_min_s": 777.3347994,
+      "latencia_max_s": 777.3347994,
+      "tiempo_interno_mediana_s": null,
+      "memoria_maxima_mb": 174.52,
+      "publicaciones_por_segundo_mediana": null
+    },
+    {
+      "servicio": "entrenamiento_autosklearn",
+      "endpoint": "/api/explainability/autosklearn/train",
+      "publicaciones": 832,
+      "repeticiones": 1,
+      "latencia_mediana_s": 646.7747102,
+      "latencia_min_s": 646.7747102,
+      "latencia_max_s": 646.7747102,
+      "tiempo_interno_mediana_s": 608.89,
+      "memoria_maxima_mb": null,
+      "publicaciones_por_segundo_mediana": null
+    },
+    {
+      "servicio": "explicabilidad_shap",
+      "endpoint": "/api/explainability/autosklearn/explain",
+      "publicaciones": 1,
+      "repeticiones": 3,
+      "latencia_mediana_s": 25.8793184,
+      "latencia_min_s": 25.0444305,
+      "latencia_max_s": 26.2244283,
+      "tiempo_interno_mediana_s": 5.777,
+      "memoria_maxima_mb": null,
+      "publicaciones_por_segundo_mediana": 0.038641
+    },
+    {
+      "servicio": "explicabilidad_shap",
+      "endpoint": "/api/explainability/autosklearn/explain",
+      "publicaciones": 10,
+      "repeticiones": 3,
+      "latencia_mediana_s": 94.0608122,
+      "latencia_min_s": 56.3935563,
+      "latencia_max_s": 102.0997984,
+      "tiempo_interno_mediana_s": 67.003,
+      "memoria_maxima_mb": null,
+      "publicaciones_por_segundo_mediana": 0.106314
+    },
+    {
+      "servicio": "explicabilidad_shap",
+      "endpoint": "/api/explainability/autosklearn/explain",
+      "publicaciones": 50,
+      "repeticiones": 3,
+      "latencia_mediana_s": 221.1940404,
+      "latencia_min_s": 202.1736109,
+      "latencia_max_s": 280.6117778,
+      "tiempo_interno_mediana_s": 202.21,
+      "memoria_maxima_mb": null,
+      "publicaciones_por_segundo_mediana": 0.226046
+    },
+    {
+      "servicio": "explicabilidad_shap",
+      "endpoint": "/api/explainability/autosklearn/explain",
+      "publicaciones": 100,
+      "repeticiones": 3,
+      "latencia_mediana_s": 390.388701,
+      "latencia_min_s": 385.6032907,
+      "latencia_max_s": 406.3534221,
+      "tiempo_interno_mediana_s": 371.84,
+      "memoria_maxima_mb": null,
+      "publicaciones_por_segundo_mediana": 0.256155
+    },
+    {
+      "servicio": "explicabilidad_shap",
+      "endpoint": "/api/explainability/autosklearn/explain",
+      "publicaciones": 832,
+      "repeticiones": 1,
+      "latencia_mediana_s": 3008.9760264,
+      "latencia_min_s": 3008.9760264,
+      "latencia_max_s": 3008.9760264,
+      "tiempo_interno_mediana_s": 2989.676,
+      "memoria_maxima_mb": null,
+      "publicaciones_por_segundo_mediana": 0.276506
+    }
+  ],
+  "trazabilidad": {
+    "publicaciones": 832,
+    "discrepancias_categoria_ss_ekmeans": 0,
+    "ids_discrepantes": [],
+    "cumple": true
+  }
+}

@@ -1,0 +1,2 @@
+﻿id_ejecucion,servicio,endpoint,publicaciones,repeticion,http_status,latencia_total_s,tiempo_interno_s,publicaciones_por_segundo,memoria_base_mb,memoria_pico_mb,incremento_memoria_mb,best_value,best_trial,best_params,trials
+services-performance-20260807T012830226406Z-d0b73d1298,optimizacion_optuna,/optimization/optuna,832,1,200,777.3347994,,,163.48,174.52,11.039,0.37071659031657395,0,"{""n_init"": 10, ""max_iter"": 300, ""tol"": 4.2079886696066345e-06, ""random_state"": 42, ""shuffle_unlabeled"": false}",30

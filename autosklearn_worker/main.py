@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import os
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, List
+from uuid import uuid4
 
 import autosklearn.classification
 import joblib
@@ -82,6 +84,30 @@ SHAP_NSAMPLES = int(
     )
 )
 
+ARTIFACT_VERSION = 4
+
+
+def create_execution_trace(
+    prefix: str,
+) -> tuple[str, str]:
+    """
+    Crea un identificador único de ejecución y registra su fecha UTC.
+    """
+    now = datetime.now(timezone.utc)
+
+    timestamp = (
+        now.isoformat(timespec="milliseconds")
+        .replace("+00:00", "Z")
+    )
+
+    execution_id = (
+        f"{prefix}-"
+        f"{now.strftime('%Y%m%dT%H%M%S%fZ')}-"
+        f"{uuid4().hex[:12]}"
+    )
+
+    return execution_id, timestamp
+
 
 class TrainRow(BaseModel):
     publication_id: str
@@ -103,11 +129,13 @@ class TrainRequest(BaseModel):
         ...,
         min_items=3,
     )
+
     time_left_for_this_task: int = Field(
         default=600,
         ge=30,
         le=1800,
     )
+
     per_run_time_limit: int = Field(
         default=60,
         ge=10,
@@ -120,6 +148,7 @@ class ExplainRequest(BaseModel):
         ...,
         min_items=1,
     )
+
     top_n: int = Field(
         default=3,
         ge=1,
@@ -135,18 +164,71 @@ app = FastAPI(
 @app.get("/health")
 def health():
     artifact_features = None
+    artifact_version = None
+    categories_available = False
+
+    training_execution_id = None
+    training_execution_timestamp = None
+    training_traceability_available = False
+
     artifacts_compatible = False
 
     if META_PATH.exists():
         try:
             meta = joblib.load(META_PATH)
+
             artifact_features = meta.get(
                 "feature_columns"
             )
-            artifacts_compatible = (
-                artifact_features
-                == FEATURE_COLUMNS
+
+            artifact_version = meta.get(
+                "artifact_version"
             )
+
+            categories_by_publication = meta.get(
+                "categoria_ss_ekmeans_por_publicacion"
+            )
+
+            categories_available = (
+                isinstance(
+                    categories_by_publication,
+                    dict,
+                )
+                and bool(categories_by_publication)
+            )
+
+            training_execution_id = meta.get(
+                "id_ejecucion_entrenamiento"
+            )
+
+            training_execution_timestamp = meta.get(
+                "fecha_ejecucion_entrenamiento_utc"
+            )
+
+            training_traceability_available = (
+                isinstance(
+                    training_execution_id,
+                    str,
+                )
+                and bool(
+                    training_execution_id.strip()
+                )
+                and isinstance(
+                    training_execution_timestamp,
+                    str,
+                )
+                and bool(
+                    training_execution_timestamp.strip()
+                )
+            )
+
+            artifacts_compatible = (
+                artifact_features == FEATURE_COLUMNS
+                and artifact_version == ARTIFACT_VERSION
+                and categories_available
+                and training_traceability_available
+            )
+
         except Exception:
             artifacts_compatible = False
 
@@ -154,18 +236,47 @@ def health():
         "status": "ok",
         "service": "autosklearn-worker",
         "artifact_dir": str(ARTIFACT_DIR),
+
         "model_exists": MODEL_PATH.exists(),
+
         "background_exists": (
             BACKGROUND_PATH.exists()
         ),
+
         "meta_exists": META_PATH.exists(),
+
         "feature_columns": FEATURE_COLUMNS,
+
         "artifact_feature_columns": (
             artifact_features
         ),
+
+        "artifact_version": artifact_version,
+
+        "required_artifact_version": (
+            ARTIFACT_VERSION
+        ),
+
+        "categories_ss_ekmeans_available": (
+            categories_available
+        ),
+
+        "id_ejecucion_entrenamiento": (
+            training_execution_id
+        ),
+
+        "fecha_ejecucion_entrenamiento_utc": (
+            training_execution_timestamp
+        ),
+
+        "training_traceability_available": (
+            training_traceability_available
+        ),
+
         "artifacts_compatible": (
             artifacts_compatible
         ),
+
         "shap_config": {
             "background_size": (
                 SHAP_BACKGROUND_SIZE
@@ -192,7 +303,10 @@ def rows_to_dataframe(
     rows: List[Any],
 ) -> pd.DataFrame:
     return pd.DataFrame(
-        [row.dict() for row in rows]
+        [
+            row.dict()
+            for row in rows
+        ]
     )
 
 
@@ -200,7 +314,9 @@ def to_feature_dataframe(
     data: Any,
 ) -> pd.DataFrame:
     if isinstance(data, pd.DataFrame):
-        return data[FEATURE_COLUMNS].copy()
+        return data[
+            FEATURE_COLUMNS
+        ].copy()
 
     return pd.DataFrame(
         data,
@@ -211,7 +327,10 @@ def to_feature_dataframe(
 def build_predict_proba_fn(model):
     def predict_proba_fn(data):
         X_input = to_feature_dataframe(data)
-        return model.predict_proba(X_input)
+
+        return model.predict_proba(
+            X_input
+        )
 
     return predict_proba_fn
 
@@ -219,7 +338,10 @@ def build_predict_proba_fn(model):
 def build_predict_fn(model):
     def predict_fn(data):
         X_input = to_feature_dataframe(data)
-        return model.predict(X_input)
+
+        return model.predict(
+            X_input
+        )
 
     return predict_fn
 
@@ -241,9 +363,17 @@ def load_artifacts():
             f"{missing_paths}. Ejecuta /train."
         )
 
-    model = joblib.load(MODEL_PATH)
-    background = joblib.load(BACKGROUND_PATH)
-    meta = joblib.load(META_PATH)
+    model = joblib.load(
+        MODEL_PATH
+    )
+
+    background = joblib.load(
+        BACKGROUND_PATH
+    )
+
+    meta = joblib.load(
+        META_PATH
+    )
 
     artifact_features = meta.get(
         "feature_columns"
@@ -260,6 +390,47 @@ def load_artifacts():
         raise RuntimeError(
             "El background SHAP no coincide con las variables "
             "del worker. Ejecuta /train nuevamente."
+        )
+
+    artifact_version = meta.get(
+        "artifact_version"
+    )
+
+    categories_by_publication = meta.get(
+        "categoria_ss_ekmeans_por_publicacion"
+    )
+
+    training_execution_id = meta.get(
+        "id_ejecucion_entrenamiento"
+    )
+
+    training_execution_timestamp = meta.get(
+        "fecha_ejecucion_entrenamiento_utc"
+    )
+
+    if (
+        artifact_version != ARTIFACT_VERSION
+        or not isinstance(
+            categories_by_publication,
+            dict,
+        )
+        or not categories_by_publication
+        or not isinstance(
+            training_execution_id,
+            str,
+        )
+        or not training_execution_id.strip()
+        or not isinstance(
+            training_execution_timestamp,
+            str,
+        )
+        or not training_execution_timestamp.strip()
+    ):
+        raise RuntimeError(
+            "Los artefactos no conservan las categorías "
+            "SS-EKMeans y la trazabilidad de ejecución necesarias "
+            "para evaluar la concordancia. "
+            "Ejecuta /train nuevamente."
         )
 
     return model, background, meta
@@ -288,6 +459,7 @@ def get_autosklearn_model_info(
 
     try:
         leaderboard = model.leaderboard()
+
         info["leaderboard"] = (
             leaderboard.to_dict(
                 orient="records"
@@ -346,11 +518,26 @@ def train(
             ),
         )
 
+    (
+        training_execution_id,
+        training_execution_timestamp,
+    ) = create_execution_trace(
+        "train"
+    )
+
     ensure_artifact_dir()
 
-    df = rows_to_dataframe(request.rows)
-    X = df[FEATURE_COLUMNS].copy()
-    y = df["categoria"].astype(str).copy()
+    df = rows_to_dataframe(
+        request.rows
+    )
+
+    X = df[
+        FEATURE_COLUMNS
+    ].copy()
+
+    y = df[
+        "categoria"
+    ].astype(str).copy()
 
     if y.nunique() < 2:
         raise HTTPException(
@@ -362,6 +549,7 @@ def train(
         )
 
     class_counts = y.value_counts()
+
     stratify = (
         y
         if class_counts.min() >= 2
@@ -381,6 +569,7 @@ def train(
             random_state=42,
             stratify=stratify,
         )
+
     except ValueError:
         (
             X_train,
@@ -417,8 +606,13 @@ def train(
         y_train,
     )
 
-    predict_fn = build_predict_fn(model)
-    y_pred = predict_fn(X_test)
+    predict_fn = build_predict_fn(
+        model
+    )
+
+    y_pred = predict_fn(
+        X_test
+    )
 
     classes = sorted(
         y.unique().tolist()
@@ -439,12 +633,14 @@ def train(
                 y_pred,
             )
         ),
+
         "balanced_accuracy": float(
             balanced_accuracy_score(
                 y_test,
                 y_pred,
             )
         ),
+
         "macro_f1": float(
             f1_score(
                 y_test,
@@ -452,10 +648,21 @@ def train(
                 average="macro",
             )
         ),
-        "n_total": int(len(X)),
-        "n_train": int(len(X_train)),
-        "n_test": int(len(X_test)),
+
+        "n_total": int(
+            len(X)
+        ),
+
+        "n_train": int(
+            len(X_train)
+        ),
+
+        "n_test": int(
+            len(X_test)
+        ),
+
         "classes": classes,
+
         "confusion_matrix": (
             confusion_matrix(
                 y_test,
@@ -463,40 +670,76 @@ def train(
                 labels=classes,
             ).tolist()
         ),
+
         "classification_report": report,
+
         "training_seconds": round(
             time.time() - start,
             3,
         ),
     }
 
-    model_info = get_autosklearn_model_info(
-        model
+    model_info = (
+        get_autosklearn_model_info(
+            model
+        )
     )
 
     background = build_background(
         X_train
     )
 
+    categoria_ss_ekmeans_por_publicacion = {
+        str(publication_id): str(categoria)
+        for publication_id, categoria in zip(
+            df["publication_id"],
+            y,
+        )
+    }
+
     meta = {
-        "artifact_version": 2,
+        "artifact_version": (
+            ARTIFACT_VERSION
+        ),
+
+        "id_ejecucion_entrenamiento": (
+            training_execution_id
+        ),
+
+        "fecha_ejecucion_entrenamiento_utc": (
+            training_execution_timestamp
+        ),
+
         "feature_columns": (
             FEATURE_COLUMNS.copy()
         ),
+
+        "categoria_ss_ekmeans_por_publicacion": (
+            categoria_ss_ekmeans_por_publicacion
+        ),
+
         "metrics": metrics,
+
         "classes": classes,
+
         "model_info": model_info,
+
         "shap_config": {
             "background_size": int(
                 len(background)
             ),
+
             "background_random_state": (
                 SHAP_BACKGROUND_RANDOM_STATE
             ),
+
             "max_explain_rows": (
                 SHAP_MAX_EXPLAIN_ROWS
             ),
-            "nsamples": SHAP_NSAMPLES,
+
+            "nsamples": (
+                SHAP_NSAMPLES
+            ),
         },
     }
 
@@ -504,28 +747,58 @@ def train(
         model,
         MODEL_PATH,
     )
+
     joblib.dump(
         background,
         BACKGROUND_PATH,
     )
+
     joblib.dump(
         meta,
         META_PATH,
     )
 
     return {
+        "id_ejecucion": (
+            training_execution_id
+        ),
+
+        "tipo_ejecucion": (
+            "entrenamiento_autosklearn"
+        ),
+
+        "fecha_ejecucion_utc": (
+            training_execution_timestamp
+        ),
+
+        "version_artefacto": (
+            ARTIFACT_VERSION
+        ),
+
         "mensaje": (
             "AutoSklearn entrenado correctamente"
         ),
+
         "metrics": metrics,
+
         "model_info": model_info,
-        "shap_config": meta["shap_config"],
+
+        "shap_config": (
+            meta["shap_config"]
+        ),
+
         "artifacts": {
-            "model_path": str(MODEL_PATH),
+            "model_path": str(
+                MODEL_PATH
+            ),
+
             "background_path": str(
                 BACKGROUND_PATH
             ),
-            "meta_path": str(META_PATH),
+
+            "meta_path": str(
+                META_PATH
+            ),
         },
     }
 
@@ -538,38 +811,72 @@ def explain(
         model, background, meta = (
             load_artifacts()
         )
+
     except FileNotFoundError as exc:
         raise HTTPException(
             status_code=404,
             detail=str(exc),
         ) from exc
+
     except RuntimeError as exc:
         raise HTTPException(
             status_code=409,
             detail=str(exc),
         ) from exc
 
+    (
+        explain_execution_id,
+        explain_execution_timestamp,
+    ) = create_execution_trace(
+        "shap"
+    )
+
+    training_execution_id = meta[
+        "id_ejecucion_entrenamiento"
+    ]
+
+    training_execution_timestamp = meta[
+        "fecha_ejecucion_entrenamiento_utc"
+    ]
+
     df_original = rows_to_dataframe(
         request.rows
     )
-    total_rows_received = len(df_original)
+
+    total_rows_received = len(
+        df_original
+    )
 
     df = (
         df_original
-        .head(SHAP_MAX_EXPLAIN_ROWS)
+        .head(
+            SHAP_MAX_EXPLAIN_ROWS
+        )
         .copy()
     )
 
-    X = df[FEATURE_COLUMNS].copy()
+    X = df[
+        FEATURE_COLUMNS
+    ].copy()
 
-    predict_fn = build_predict_fn(model)
-    predict_proba_fn = (
-        build_predict_proba_fn(model)
+    predict_fn = build_predict_fn(
+        model
     )
 
-    predictions = predict_fn(X)
+    predict_proba_fn = (
+        build_predict_proba_fn(
+            model
+        )
+    )
+
+    predictions = predict_fn(
+        X
+    )
+
     probabilities = np.asarray(
-        predict_proba_fn(X),
+        predict_proba_fn(
+            X
+        ),
         dtype=float,
     )
 
@@ -615,33 +922,73 @@ def explain(
 
     importancia_global = (
         build_global_importance(
-            feature_columns=FEATURE_COLUMNS,
-            shap_values=shap_values,
+            feature_columns=(
+                FEATURE_COLUMNS
+            ),
+            shap_values=(
+                shap_values
+            ),
         )
     )
 
     importancia_por_clase = (
         build_global_importance_by_class(
-            feature_columns=FEATURE_COLUMNS,
-            shap_values=shap_values,
+            feature_columns=(
+                FEATURE_COLUMNS
+            ),
+            shap_values=(
+                shap_values
+            ),
             classes=classes,
         )
     )
 
     validacion_aditividad = (
         build_additivity_diagnostics(
-            expected_values=expected_values,
-            shap_values=shap_values,
-            model_outputs=probabilities,
+            expected_values=(
+                expected_values
+            ),
+            shap_values=(
+                shap_values
+            ),
+            model_outputs=(
+                probabilities
+            ),
             classes=classes,
         )
     )
 
     predicciones = []
 
-    for row_index in range(len(X)):
+    categories_by_publication = meta[
+        "categoria_ss_ekmeans_por_publicacion"
+    ]
+
+    for row_index in range(
+        len(X)
+    ):
+        publication_id = str(
+            df.iloc[row_index][
+                "publication_id"
+            ]
+        )
+
         prediction = str(
-            predictions[row_index]
+            predictions[
+                row_index
+            ]
+        )
+
+        categoria_ss_ekmeans = (
+            categories_by_publication.get(
+                publication_id
+            )
+        )
+
+        concordancia = (
+            categoria_ss_ekmeans == prediction
+            if categoria_ss_ekmeans is not None
+            else None
         )
 
         if prediction not in classes:
@@ -668,9 +1015,13 @@ def explain(
                 feature_columns=(
                     FEATURE_COLUMNS
                 ),
+
                 feature_values=(
-                    X.iloc[row_index].tolist()
+                    X.iloc[
+                        row_index
+                    ].tolist()
                 ),
+
                 shap_values=(
                     local_values.tolist()
                 ),
@@ -683,7 +1034,9 @@ def explain(
 
         probability_by_class = {
             classes[class_position]: float(
-                proba_row[class_position]
+                proba_row[
+                    class_position
+                ]
             )
             for class_position in range(
                 len(classes)
@@ -691,63 +1044,279 @@ def explain(
         }
 
         reconstructed_probability = float(
-            expected_values[class_index]
-            + np.sum(local_values)
+            expected_values[
+                class_index
+            ]
+            + np.sum(
+                local_values
+            )
         )
 
         predicciones.append(
             {
-                "publication_id": str(
-                    df.iloc[row_index][
-                        "publication_id"
-                    ]
+                "id_ejecucion": (
+                    explain_execution_id
                 ),
-                "prediccion": prediction,
+
+                "id_ejecucion_entrenamiento": (
+                    training_execution_id
+                ),
+
+                "publication_id": (
+                    publication_id
+                ),
+
+                "categoria_ss_ekmeans": (
+                    categoria_ss_ekmeans
+                ),
+
+                "categoria_sustituto": (
+                    prediction
+                ),
+
+                "concordancia": (
+                    concordancia
+                ),
+
+                # Se mantiene por compatibilidad con resultados previos.
+                "prediccion": (
+                    prediction
+                ),
+
                 "probabilidades": (
                     probability_by_class
                 ),
-                "explicacion_clase": prediction,
-                "valor_base": float(
-                    expected_values[class_index]
+
+                "explicacion_clase": (
+                    prediction
                 ),
+
+                "valor_base": float(
+                    expected_values[
+                        class_index
+                    ]
+                ),
+
                 "probabilidad_reconstruida": (
                     reconstructed_probability
                 ),
+
                 "error_aditividad": float(
                     abs(
                         reconstructed_probability
-                        - proba_row[class_index]
+                        - proba_row[
+                            class_index
+                        ]
                     )
                 ),
+
                 "top_contribuciones": (
                     contributions[
                         : request.top_n
                     ]
                 ),
+
                 "contribuciones": (
                     contributions
                 ),
             }
         )
 
+    total_comparables = sum(
+        item["concordancia"] is not None
+        for item in predicciones
+    )
+
+    coincidencias = sum(
+        item["concordancia"] is True
+        for item in predicciones
+    )
+
+    discrepancias = sum(
+        item["concordancia"] is False
+        for item in predicciones
+    )
+
+    sin_categoria_ss_ekmeans = (
+        len(predicciones)
+        - total_comparables
+    )
+
+    tasa_concordancia = (
+        coincidencias / total_comparables
+        if total_comparables
+        else None
+    )
+
+    matriz_concordancia = {
+        categoria_ss_ekmeans: {
+            categoria_sustituto: 0
+            for categoria_sustituto in classes
+        }
+        for categoria_ss_ekmeans in classes
+    }
+
+    for item in predicciones:
+        categoria_ss_ekmeans = item[
+            "categoria_ss_ekmeans"
+        ]
+
+        categoria_sustituto = item[
+            "categoria_sustituto"
+        ]
+
+        if categoria_ss_ekmeans is None:
+            continue
+
+        matriz_concordancia[
+            categoria_ss_ekmeans
+        ][
+            categoria_sustituto
+        ] += 1
+
+    discrepancias_por_transicion = [
+        {
+            "categoria_ss_ekmeans": (
+                categoria_ss_ekmeans
+            ),
+
+            "categoria_sustituto": (
+                categoria_sustituto
+            ),
+
+            "cantidad": (
+                matriz_concordancia[
+                    categoria_ss_ekmeans
+                ][
+                    categoria_sustituto
+                ]
+            ),
+        }
+        for categoria_ss_ekmeans in classes
+        for categoria_sustituto in classes
+        if (
+            categoria_ss_ekmeans
+            != categoria_sustituto
+            and matriz_concordancia[
+                categoria_ss_ekmeans
+            ][
+                categoria_sustituto
+            ] > 0
+        )
+    ]
+
+    resumen_concordancia = {
+        "id_ejecucion": (
+            explain_execution_id
+        ),
+
+        "id_ejecucion_entrenamiento": (
+            training_execution_id
+        ),
+
+        "total_explicados": (
+            len(predicciones)
+        ),
+
+        "total_comparables": (
+            total_comparables
+        ),
+
+        "coincidencias": (
+            coincidencias
+        ),
+
+        "discrepancias": (
+            discrepancias
+        ),
+
+        "sin_categoria_ss_ekmeans": (
+            sin_categoria_ss_ekmeans
+        ),
+
+        "tasa_concordancia": (
+            tasa_concordancia
+        ),
+
+        "porcentaje_concordancia": (
+            tasa_concordancia * 100
+            if tasa_concordancia is not None
+            else None
+        ),
+
+        "matriz_concordancia": (
+            matriz_concordancia
+        ),
+
+        "discrepancias_por_transicion": (
+            discrepancias_por_transicion
+        ),
+    }
+
     return {
+        "id_ejecucion": (
+            explain_execution_id
+        ),
+
+        "tipo_ejecucion": (
+            "explicabilidad_shap"
+        ),
+
+        "fecha_ejecucion_utc": (
+            explain_execution_timestamp
+        ),
+
+        "id_ejecucion_entrenamiento": (
+            training_execution_id
+        ),
+
+        "fecha_ejecucion_entrenamiento_utc": (
+            training_execution_timestamp
+        ),
+
+        "version_artefacto": (
+            meta.get(
+                "artifact_version"
+            )
+        ),
+
         "mensaje": (
             "Explicaciones generadas correctamente"
         ),
-        "modelo": "AutoSklearnClassifier",
-        "variables_explicadas": FEATURE_COLUMNS,
+
+        "modelo": (
+            "AutoSklearnClassifier"
+        ),
+
+        "variables_explicadas": (
+            FEATURE_COLUMNS
+        ),
+
         "metrics_entrenamiento": (
-            meta.get("metrics")
+            meta.get(
+                "metrics"
+            )
         ),
+
         "model_info": (
-            meta.get("model_info")
+            meta.get(
+                "model_info"
+            )
         ),
+
         "shap_config": {
-            "explainer": "KernelExplainer",
-            "link": "identity",
+            "explainer": (
+                "KernelExplainer"
+            ),
+
+            "link": (
+                "identity"
+            ),
+
             "background_rows": int(
                 len(background)
             ),
+
             "background_random_state": (
                 meta.get(
                     "shap_config",
@@ -756,38 +1325,61 @@ def explain(
                     "background_random_state"
                 )
             ),
-            "nsamples": SHAP_NSAMPLES,
+
+            "nsamples": (
+                SHAP_NSAMPLES
+            ),
+
             "productos_recibidos": int(
                 total_rows_received
             ),
+
             "productos_explicados": int(
                 len(X)
             ),
+
             "limite_productos_explicados": (
                 SHAP_MAX_EXPLAIN_ROWS
             ),
-            "shap_seconds": shap_seconds,
+
+            "shap_seconds": (
+                shap_seconds
+            ),
+
             "truncated": (
                 total_rows_received
                 > len(X)
             ),
         },
+
         "valores_base_por_clase": {
             classes[class_index]: float(
-                expected_values[class_index]
+                expected_values[
+                    class_index
+                ]
             )
             for class_index in range(
                 len(classes)
             )
         },
+
         "validacion_aditividad": (
             validacion_aditividad
         ),
+
+        "resumen_concordancia": (
+            resumen_concordancia
+        ),
+
         "importancia_global": (
             importancia_global
         ),
+
         "importancia_por_clase": (
             importancia_por_clase
         ),
-        "predicciones": predicciones,
+
+        "predicciones": (
+            predicciones
+        ),
     }

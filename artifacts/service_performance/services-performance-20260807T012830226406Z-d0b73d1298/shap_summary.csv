@@ -1,0 +1,6 @@
+﻿servicio,endpoint,publicaciones,repeticiones,latencia_mediana_s,latencia_min_s,latencia_max_s,tiempo_interno_mediana_s,memoria_maxima_mb,publicaciones_por_segundo_mediana
+explicabilidad_shap,/api/explainability/autosklearn/explain,1,3,25.8793184,25.0444305,26.2244283,5.777,,0.038641
+explicabilidad_shap,/api/explainability/autosklearn/explain,10,3,94.0608122,56.3935563,102.0997984,67.003,,0.106314
+explicabilidad_shap,/api/explainability/autosklearn/explain,50,3,221.1940404,202.1736109,280.6117778,202.21,,0.226046
+explicabilidad_shap,/api/explainability/autosklearn/explain,100,3,390.388701,385.6032907,406.3534221,371.84,,0.256155
+explicabilidad_shap,/api/explainability/autosklearn/explain,832,1,3008.9760264,3008.9760264,3008.9760264,2989.676,,0.276506

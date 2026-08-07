@@ -1,5 +1,11 @@
 {
   "source": "data\\shap_explain_response.json",
+  "id_ejecucion": "shap-20260806T185055850302Z-3718c6f78cd0",
+  "tipo_ejecucion": "explicabilidad_shap",
+  "fecha_ejecucion_utc": "2026-08-06T18:50:55.850Z",
+  "id_ejecucion_entrenamiento": "train-20260806T182522743193Z-0ff755676203",
+  "fecha_ejecucion_entrenamiento_utc": "2026-08-06T18:25:22.743Z",
+  "version_artefacto": 4,
   "variables_explicadas": [
     "ventas_30d",
     "visitas_30d",
@@ -7,9 +13,9 @@
   ],
   "modelo_sustituto": "AutoSklearnClassifier",
   "metricas_entrenamiento": {
-    "accuracy": 0.9760479041916168,
-    "balanced_accuracy": 0.9841269841269842,
-    "macro_f1": 0.972822299651568,
+    "accuracy": 0.9700598802395209,
+    "balanced_accuracy": 0.9774603174603174,
+    "macro_f1": 0.9650287369284278,
     "n_total": 832,
     "n_train": 665,
     "n_test": 167,
@@ -25,8 +31,8 @@
         0
       ],
       [
-        0,
-        50,
+        1,
+        49,
         0
       ],
       [
@@ -37,15 +43,15 @@
     ],
     "classification_report": {
       "A": {
-        "precision": 0.8918918918918919,
+        "precision": 0.868421052631579,
         "recall": 1,
-        "f1-score": 0.9428571428571428,
+        "f1-score": 0.9295774647887324,
         "support": 33
       },
       "B": {
         "precision": 1,
-        "recall": 1,
-        "f1-score": 1,
+        "recall": 0.98,
+        "f1-score": 0.98989898989899,
         "support": 50
       },
       "C": {
@@ -54,21 +60,21 @@
         "f1-score": 0.975609756097561,
         "support": 84
       },
-      "accuracy": 0.9760479041916168,
+      "accuracy": 0.9700598802395209,
       "macro avg": {
-        "precision": 0.963963963963964,
-        "recall": 0.9841269841269842,
-        "f1-score": 0.972822299651568,
+        "precision": 0.956140350877193,
+        "recall": 0.9774603174603174,
+        "f1-score": 0.9650287369284278,
         "support": 167
       },
       "weighted avg": {
-        "precision": 0.9786373199546853,
-        "recall": 0.9760479041916168,
-        "f1-score": 0.9764401510567715,
+        "precision": 0.9739993696816893,
+        "recall": 0.9700598802395209,
+        "f1-score": 0.9707917685339689,
         "support": 167
       }
     },
-    "training_seconds": 611.122
+    "training_seconds": 607.703
   },
   "configuracion_shap": {
     "explainer": "KernelExplainer",
@@ -79,93 +85,234 @@
     "productos_recibidos": 832,
     "productos_explicados": 832,
     "limite_productos_explicados": 832,
-    "shap_seconds": 2970.098,
+    "shap_seconds": 1382.994,
     "truncated": false
   },
-  "conteos_predichos": {
-    "A": 172,
+  "conteos_categoria_ss_ekmeans": {
+    "A": 166,
     "B": 250,
-    "C": 410
+    "C": 416
   },
+  "conteos_categoria_sustituto": {
+    "A": 175,
+    "B": 248,
+    "C": 409
+  },
+  "resumen_concordancia": {
+    "id_ejecucion": "shap-20260806T185055850302Z-3718c6f78cd0",
+    "id_ejecucion_entrenamiento": "train-20260806T182522743193Z-0ff755676203",
+    "total_explicados": 832,
+    "total_comparables": 832,
+    "coincidencias": 821,
+    "discrepancias": 11,
+    "sin_categoria_ss_ekmeans": 0,
+    "tasa_concordancia": 0.9867788461538461,
+    "porcentaje_concordancia": 98.67788461538461,
+    "matriz_concordancia": {
+      "A": {
+        "A": 165,
+        "B": 1,
+        "C": 0
+      },
+      "B": {
+        "A": 3,
+        "B": 247,
+        "C": 0
+      },
+      "C": {
+        "A": 7,
+        "B": 0,
+        "C": 409
+      }
+    },
+    "discrepancias_por_transicion": [
+      {
+        "categoria_ss_ekmeans": "A",
+        "categoria_sustituto": "B",
+        "cantidad": 1
+      },
+      {
+        "categoria_ss_ekmeans": "B",
+        "categoria_sustituto": "A",
+        "cantidad": 3
+      },
+      {
+        "categoria_ss_ekmeans": "C",
+        "categoria_sustituto": "A",
+        "cantidad": 7
+      }
+    ]
+  },
+  "transiciones_concordancia": [
+    {
+      "id_ejecucion": "shap-20260806T185055850302Z-3718c6f78cd0",
+      "id_ejecucion_entrenamiento": "train-20260806T182522743193Z-0ff755676203",
+      "categoria_ss_ekmeans": "A",
+      "categoria_sustituto": "A",
+      "concordancia": true,
+      "cantidad": 165,
+      "porcentaje_total": 19.831730769230766
+    },
+    {
+      "id_ejecucion": "shap-20260806T185055850302Z-3718c6f78cd0",
+      "id_ejecucion_entrenamiento": "train-20260806T182522743193Z-0ff755676203",
+      "categoria_ss_ekmeans": "A",
+      "categoria_sustituto": "B",
+      "concordancia": false,
+      "cantidad": 1,
+      "porcentaje_total": 0.1201923076923077
+    },
+    {
+      "id_ejecucion": "shap-20260806T185055850302Z-3718c6f78cd0",
+      "id_ejecucion_entrenamiento": "train-20260806T182522743193Z-0ff755676203",
+      "categoria_ss_ekmeans": "A",
+      "categoria_sustituto": "C",
+      "concordancia": false,
+      "cantidad": 0,
+      "porcentaje_total": 0.0
+    },
+    {
+      "id_ejecucion": "shap-20260806T185055850302Z-3718c6f78cd0",
+      "id_ejecucion_entrenamiento": "train-20260806T182522743193Z-0ff755676203",
+      "categoria_ss_ekmeans": "B",
+      "categoria_sustituto": "A",
+      "concordancia": false,
+      "cantidad": 3,
+      "porcentaje_total": 0.3605769230769231
+    },
+    {
+      "id_ejecucion": "shap-20260806T185055850302Z-3718c6f78cd0",
+      "id_ejecucion_entrenamiento": "train-20260806T182522743193Z-0ff755676203",
+      "categoria_ss_ekmeans": "B",
+      "categoria_sustituto": "B",
+      "concordancia": true,
+      "cantidad": 247,
+      "porcentaje_total": 29.6875
+    },
+    {
+      "id_ejecucion": "shap-20260806T185055850302Z-3718c6f78cd0",
+      "id_ejecucion_entrenamiento": "train-20260806T182522743193Z-0ff755676203",
+      "categoria_ss_ekmeans": "B",
+      "categoria_sustituto": "C",
+      "concordancia": false,
+      "cantidad": 0,
+      "porcentaje_total": 0.0
+    },
+    {
+      "id_ejecucion": "shap-20260806T185055850302Z-3718c6f78cd0",
+      "id_ejecucion_entrenamiento": "train-20260806T182522743193Z-0ff755676203",
+      "categoria_ss_ekmeans": "C",
+      "categoria_sustituto": "A",
+      "concordancia": false,
+      "cantidad": 7,
+      "porcentaje_total": 0.8413461538461539
+    },
+    {
+      "id_ejecucion": "shap-20260806T185055850302Z-3718c6f78cd0",
+      "id_ejecucion_entrenamiento": "train-20260806T182522743193Z-0ff755676203",
+      "categoria_ss_ekmeans": "C",
+      "categoria_sustituto": "B",
+      "concordancia": false,
+      "cantidad": 0,
+      "porcentaje_total": 0.0
+    },
+    {
+      "id_ejecucion": "shap-20260806T185055850302Z-3718c6f78cd0",
+      "id_ejecucion_entrenamiento": "train-20260806T182522743193Z-0ff755676203",
+      "categoria_ss_ekmeans": "C",
+      "categoria_sustituto": "C",
+      "concordancia": true,
+      "cantidad": 409,
+      "porcentaje_total": 49.15865384615385
+    }
+  ],
   "importancia_global": [
     {
+      "id_ejecucion": "shap-20260806T185055850302Z-3718c6f78cd0",
+      "id_ejecucion_entrenamiento": "train-20260806T182522743193Z-0ff755676203",
       "feature": "precio_actual",
       "variable": "Precio actual",
-      "mean_abs_shap": 0.27137438986994766,
-      "porcentaje_relativo": 59.9296286366791
+      "mean_abs_shap": 0.2364682988242448,
+      "porcentaje_relativo": 59.471006691889386
     },
     {
+      "id_ejecucion": "shap-20260806T185055850302Z-3718c6f78cd0",
+      "id_ejecucion_entrenamiento": "train-20260806T182522743193Z-0ff755676203",
       "feature": "visitas_30d",
       "variable": "Visitas (30 días)",
-      "mean_abs_shap": 0.16639145336580355,
-      "porcentaje_relativo": 36.74546449762171
+      "mean_abs_shap": 0.14982268420705452,
+      "porcentaje_relativo": 37.67991692491944
     },
     {
+      "id_ejecucion": "shap-20260806T185055850302Z-3718c6f78cd0",
+      "id_ejecucion_entrenamiento": "train-20260806T182522743193Z-0ff755676203",
       "feature": "ventas_30d",
       "variable": "Ventas (30 días)",
-      "mean_abs_shap": 0.015055901272534854,
-      "porcentaje_relativo": 3.3249068656991914
+      "mean_abs_shap": 0.011328482281189182,
+      "porcentaje_relativo": 2.849076383191187
     }
   ],
   "casos_representativos": {
     "A": {
-      "publication_id": "MLC1882033437",
-      "probabilidad": 0.9583322425470239,
-      "valor_base": 0.18004210385976527,
-      "probabilidad_reconstruida": 0.9583322425470239,
+      "id_ejecucion": "shap-20260806T185055850302Z-3718c6f78cd0",
+      "id_ejecucion_entrenamiento": "train-20260806T182522743193Z-0ff755676203",
+      "publication_id": "MLC1887685201",
+      "categoria_ss_ekmeans": "A",
+      "categoria_sustituto": "A",
+      "concordancia": true,
+      "probabilidad": 0.8936161538676279,
+      "valor_base": 0.19880424727280877,
+      "probabilidad_reconstruida": 0.8936161538676279,
       "error_aditividad": 0
     },
     "B": {
-      "publication_id": "MLC1887635501",
-      "probabilidad": 0.9792288299355001,
-      "valor_base": 0.35972422408792115,
-      "probabilidad_reconstruida": 0.9792288299355,
+      "id_ejecucion": "shap-20260806T185055850302Z-3718c6f78cd0",
+      "id_ejecucion_entrenamiento": "train-20260806T182522743193Z-0ff755676203",
+      "publication_id": "MLC1887698115",
+      "categoria_ss_ekmeans": "B",
+      "categoria_sustituto": "B",
+      "concordancia": true,
+      "probabilidad": 0.9032398452261284,
+      "valor_base": 0.3570847592666761,
+      "probabilidad_reconstruida": 0.9032398452261285,
       "error_aditividad": 1.1102230246251565e-16
     },
     "C": {
-      "publication_id": "MLC1887635547",
-      "probabilidad": 0.9875010524406244,
-      "valor_base": 0.4602336720523138,
-      "probabilidad_reconstruida": 0.9875010524406244,
+      "id_ejecucion": "shap-20260806T185055850302Z-3718c6f78cd0",
+      "id_ejecucion_entrenamiento": "train-20260806T182522743193Z-0ff755676203",
+      "publication_id": "MLC1919366373",
+      "categoria_ss_ekmeans": "C",
+      "categoria_sustituto": "C",
+      "concordancia": true,
+      "probabilidad": 0.9068265815178581,
+      "valor_base": 0.4441109934605154,
+      "probabilidad_reconstruida": 0.9068265815178581,
       "error_aditividad": 0
     }
   },
   "validacion_aditividad": {
-    "mean_absolute_error": 5.744993890574493e-06,
-    "max_absolute_error": 0.00642901163466196,
+    "mean_absolute_error": 2.0305160686754164e-17,
+    "max_absolute_error": 2.220446049250313e-16,
     "tolerance": 0.0001,
-    "cumple_tolerancia": false,
+    "cumple_tolerancia": true,
     "por_clase": {
       "A": {
-        "mean_absolute_error": 8.617490835842205e-06,
-        "max_absolute_error": 0.006429011634661919
+        "mean_absolute_error": 1.5078750214259937e-17,
+        "max_absolute_error": 2.220446049250313e-16
       },
       "B": {
-        "mean_absolute_error": 8.903133903462435e-07,
-        "max_absolute_error": 0.0007407407407407085
+        "mean_absolute_error": 2.902325815576581e-17,
+        "max_absolute_error": 2.220446049250313e-16
       },
       "C": {
-        "mean_absolute_error": 7.72717744553503e-06,
-        "max_absolute_error": 0.00642901163466196
+        "mean_absolute_error": 1.6813473690236744e-17,
+        "max_absolute_error": 2.220446049250313e-16
       }
     },
     "explicaciones_evaluadas": 832,
-    "explicaciones_dentro_tolerancia": 830,
-    "explicaciones_fuera_tolerancia": 2,
-    "excepciones": [
-      {
-        "publication_id": "MLC3856909388",
-        "categoria": "A",
-        "error_aditividad": 0.006429011634661919,
-        "cumple_tolerancia": false
-      },
-      {
-        "publication_id": "MLC3794506370",
-        "categoria": "B",
-        "error_aditividad": 0.0007407407407407085,
-        "cumple_tolerancia": false
-      }
-    ]
+    "explicaciones_dentro_tolerancia": 832,
+    "explicaciones_fuera_tolerancia": 0,
+    "excepciones": []
   },
   "figuras_generadas": [
     "figura_shap_01_fidelidad_sustituto.png",
@@ -179,6 +326,8 @@
     "tabla_shap_02_importancia_global.csv",
     "tabla_shap_03_importancia_por_categoria.csv",
     "tabla_shap_04_casos_representativos.csv",
-    "tabla_shap_05_excepciones_aditividad.csv"
+    "tabla_shap_05_excepciones_aditividad.csv",
+    "tabla_shap_06_concordancia_categorias.csv",
+    "tabla_shap_07_concordancia_publicaciones.csv"
   ]
 }

@@ -1,0 +1,9 @@
+﻿Indicador,Score normalizado,SS-EKMeans,Interpretación
+Silhouette ↑,"0,2345","0,3707",Mayor es mejor
+Davies-Bouldin ↓,"1,7021","1,1091",Menor es mejor
+Calinski-Harabasz ↑,"214,2799","354,6279",Mayor es mejor
+Inercia ↓,"1645,40","1345,15",Menor es mejor
+Tiempo (s),"0,030","11,309",El score solo ordena
+Coincidencia exacta,—,"72,00 %",Comparación entre métodos
+Publicaciones diferentes,—,233,Comparación entre métodos
+Adjusted Rand Index,—,"0,4678",Concordancia entre particiones

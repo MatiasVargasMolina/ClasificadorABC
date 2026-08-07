@@ -1,0 +1,7 @@
+﻿servicio,endpoint,publicaciones,repeticiones,latencia_mediana_s,latencia_min_s,latencia_max_s,tiempo_interno_mediana_s,memoria_maxima_mb,publicaciones_por_segundo_mediana
+clasificacion,/api/clasificar,20,10,0.25070800000000004,0.2030664,0.7250398,,159.676,79.7740805
+clasificacion,/api/clasificar,50,10,0.5559526,0.3541706,0.688702,,159.785,92.3582825
+clasificacion,/api/clasificar,100,10,0.6218026,0.5658075,1.1511856,,160.168,160.82726350000002
+clasificacion,/api/clasificar,250,10,1.17824825,0.9824601,1.6456678,,161.984,212.7048125
+clasificacion,/api/clasificar,500,10,1.7718517500000002,1.691641,2.2431526,,166.543,282.191825
+clasificacion,/api/clasificar,832,10,6.55327305,5.9003866,11.2246826,,174.055,126.959533

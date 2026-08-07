@@ -1,70 +1,38 @@
-from app.schemas.input_schema import RequestInput
 from app.preprocessing.validator import validar_producto, validar_productos
+from app.schemas.input_schema import ProductoInput
 
 
-def crear_producto(**overrides):
-    data = {
-        "productos": [
-            {
-                "publication_id": "MLC123",
-                "ventas_30d": 10,
-                "visitas_30d": 100,
-                "precio_actual": 15990,
-                "stock_actual": 5,
-                "en_promocion": True
-            }
-        ]
-    }
-
-    data["productos"][0].update(overrides)
-    request = RequestInput(**data)
-    return request.productos[0]
+def make_product(publication_id, sales, visits):
+    return ProductoInput(
+        publication_id=publication_id,
+        ventas_30d=sales,
+        visitas_30d=visits,
+        precio_actual=1000.0,
+        stock_actual=1,
+    )
 
 
-def test_validar_producto_sin_errores():
-    producto = crear_producto()
-    errores = validar_producto(producto)
-
-    assert errores == []
+def test_validar_producto_accepts_consistent_commercial_counts():
+    assert validar_producto(make_product("OK", 2, 10)) == []
 
 
-def test_detecta_ventas_sin_visitas():
-    producto = crear_producto(ventas_30d=5, visitas_30d=0)
-    errores = validar_producto(producto)
-
-    assert "inconsistencia: ventas_30d > 0 pero visitas_30d = 0" in errores
-
-
-def test_detecta_visitas_menores_que_ventas():
-    producto = crear_producto(ventas_30d=10, visitas_30d=5)
-    errores = validar_producto(producto)
-
-    assert "inconsistencia: visitas_30d menores que ventas_30d" in errores
+def test_validar_producto_rejects_sales_without_visits():
+    errors = validar_producto(make_product("BAD", 2, 0))
+    assert "ventas_30d > 0" in errors[0]
+    assert any("menores que ventas_30d" in error for error in errors)
 
 
-def test_validar_productos_separa_validos_e_invalidos():
-    data = {
-        "productos": [
-            {
-                "publication_id": "MLC123",
-                "ventas_30d": 10,
-                "visitas_30d": 100,
-                "precio_actual": 15990,
-                "stock_actual": 5
-            },
-            {
-                "publication_id": "MLC124",
-                "ventas_30d": 5,
-                "visitas_30d": 0,
-                "precio_actual": 12990,
-                "stock_actual": 8
-            }
-        ]
-    }
+def test_validar_producto_rejects_visits_lower_than_sales():
+    errors = validar_producto(make_product("BAD", 5, 3))
+    assert errors == [
+        "inconsistencia: visitas_30d menores que ventas_30d"
+    ]
 
-    request = RequestInput(**data)
-    resultado = validar_productos(request.productos)
 
-    assert len(resultado["validos"]) == 1
-    assert len(resultado["invalidos"]) == 1
-    assert resultado["invalidos"][0]["publication_id"] == "MLC124"
+def test_validar_productos_separates_valid_and_invalid_records():
+    valid = make_product("OK", 1, 3)
+    invalid = make_product("BAD", 4, 2)
+    result = validar_productos([valid, invalid])
+    assert result["validos"] == [valid]
+    assert result["invalidos"][0]["publication_id"] == "BAD"
+    assert result["invalidos"][0]["errores"]
