@@ -117,3 +117,14 @@ def test_constructor_rejects_invalid_parameters(kwargs):
 def test_fit_rejects_invalid_feature_matrices(X):
     with pytest.raises(ValueError):
         make_model().fit(X)
+def test_fit_rejects_fewer_than_four_observations():
+    X = pd.DataFrame(
+        {
+            "ventas": [1.0, 0.5, 0.0],
+            "visitas": [1.0, 0.5, 0.0],
+            "precio": [1.0, 0.0, -1.0],
+        }
+    )
+
+    with pytest.raises(ValueError, match="al menos 4 observaciones"):
+        make_model().fit(X)

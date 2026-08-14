@@ -80,3 +80,13 @@ def test_clasificar_endpoint_rejects_duplicate_publication_ids():
     response = client.post("/api/clasificar", json=duplicate)
     assert response.status_code == 422
     assert "duplicados" in str(response.json())
+
+def test_clasificar_endpoint_requires_twenty_valid_products():
+    response = client.post("/api/clasificar", json=VALID_PAYLOAD)
+    body = response.json()
+
+    assert response.status_code == 200
+    assert body["productos_validos"] == 1
+    assert body["minimo_operacional"] == 20
+    assert body["resultados"] == []
+    assert "después de excluir" in body["mensaje"]

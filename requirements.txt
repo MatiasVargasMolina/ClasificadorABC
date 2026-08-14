@@ -38,3 +38,4 @@ uvicorn==0.44.0
 wheel==0.47.0
 requests==2.32.3
 httpx==0.28.1
+pytest-cov==5.0.0

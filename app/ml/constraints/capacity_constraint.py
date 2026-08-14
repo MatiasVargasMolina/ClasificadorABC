@@ -10,6 +10,13 @@ def compute_capacities(
     proportions: Mapping[str, float],
     labels: Sequence[str] = LABELS_ABC,
 ) -> Dict[str, int]:
+    """Calcula capacidades enteras mediante el método del mayor resto.
+
+    Primero asigna la parte entera inferior de cada cuota y luego
+    distribuye los cupos restantes según las mayores partes
+    fraccionarias. El orden de ``labels`` resuelve empates y hace que el
+    resultado sea determinista.
+    """
     if n_samples <= 0:
         raise ValueError("n_samples debe ser mayor que 0.")
 
@@ -48,5 +55,24 @@ def compute_capacities(
 
         for label in ordered[:remainder]:
             capacities[label] += 1
+
+    zero_capacity = [
+        label
+        for label in labels
+        if capacities[label] == 0
+    ]
+
+    if zero_capacity:
+        raise ValueError(
+            "Todas las categorías deben recibir al menos una "
+            "observación. Capacidades en cero: "
+            f"{zero_capacity}."
+        )
+
+    if sum(capacities.values()) != n_samples:
+        raise RuntimeError(
+            "La suma de las capacidades no coincide con la cantidad "
+            "de observaciones."
+        )
 
     return capacities

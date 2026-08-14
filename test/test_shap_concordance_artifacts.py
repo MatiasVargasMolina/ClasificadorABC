@@ -14,14 +14,13 @@ from typing import Any
 import pytest
 
 
-# Fuerza un backend compatible con ejecución sin interfaz gráfica.
-os.environ.setdefault(
-    "MPLBACKEND",
-    "Agg",
-)
+os.environ.setdefault("MPLBACKEND", "Agg")
 
 
 from generate_shap_result_figures import (  # noqa: E402
+    CLASSES,
+    build_additivity_rows,
+    build_concordance_summary,
     build_concordance_detail_rows,
     build_concordance_transition_rows,
     choose_representative_cases,
@@ -30,11 +29,7 @@ from generate_shap_result_figures import (  # noqa: E402
 )
 
 
-PROJECT_ROOT = (
-    Path(__file__)
-    .resolve()
-    .parents[1]
-)
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 DEFAULT_RESPONSE_PATH = (
     PROJECT_ROOT
@@ -49,13 +44,11 @@ RESPONSE_PATH = Path(
     )
 )
 
+
 EXPECTED_TOTAL = 832
-EXPECTED_AGREEMENTS = 821
-EXPECTED_DISCREPANCIES = 11
-EXPECTED_CONCORDANCE_RATE = (
-    EXPECTED_AGREEMENTS
-    / EXPECTED_TOTAL
-)
+EXPECTED_AGREEMENTS = 823
+EXPECTED_DISCREPANCIES = 9
+EXPECTED_CONCORDANCE_RATE = 823 / 832
 
 EXPECTED_MATRIX = {
     "A": {
@@ -64,9 +57,9 @@ EXPECTED_MATRIX = {
         "C": 0,
     },
     "B": {
-        "A": 3,
-        "B": 247,
-        "C": 0,
+        "A": 0,
+        "B": 249,
+        "C": 1,
     },
     "C": {
         "A": 7,
@@ -83,8 +76,8 @@ EXPECTED_TRANSITIONS = [
     },
     {
         "categoria_ss_ekmeans": "B",
-        "categoria_sustituto": "A",
-        "cantidad": 3,
+        "categoria_sustituto": "C",
+        "cantidad": 1,
     },
     {
         "categoria_ss_ekmeans": "C",
@@ -100,15 +93,15 @@ EXPECTED_SS_COUNTS = {
 }
 
 EXPECTED_SURROGATE_COUNTS = {
-    "A": 175,
-    "B": 248,
-    "C": 409,
+    "A": 172,
+    "B": 250,
+    "C": 410,
 }
 
 EXPECTED_REPRESENTATIVE_IDS = {
-    "A": "MLC1887685201",
-    "B": "MLC1887698115",
-    "C": "MLC1919366373",
+    "A": "MLC3737992360",
+    "B": "MLC1887635545",
+    "C": "MLC1878041405",
 }
 
 EXPECTED_FIGURES = {
@@ -141,25 +134,18 @@ def read_response() -> dict[str, Any]:
         "r",
         encoding="utf-8-sig",
     ) as input_file:
-        response = json.load(
-            input_file
-        )
+        response = json.load(input_file)
 
-    if not isinstance(
-        response,
-        dict,
-    ):
+    if not isinstance(response, dict):
         pytest.fail(
-            "shap_explain_response.json debe "
-            "contener un objeto JSON."
+            "shap_explain_response.json debe contener "
+            "un objeto JSON."
         )
 
     return response
 
 
-@pytest.fixture(
-    scope="module",
-)
+@pytest.fixture(scope="module")
 def response() -> dict[str, Any]:
     return read_response()
 
@@ -189,17 +175,18 @@ def read_csv_rows(
         reader = csv.DictReader(
             input_file
         )
-
         columns = list(
             reader.fieldnames
             or []
         )
-
         rows = list(
             reader
         )
 
-    return columns, rows
+    return (
+        columns,
+        rows,
+    )
 
 
 def test_final_response_is_complete_and_traceable(
@@ -207,28 +194,22 @@ def test_final_response_is_complete_and_traceable(
 ) -> None:
     validate_response(
         response,
-        expected_products=(
-            EXPECTED_TOTAL
-        ),
+        expected_products=EXPECTED_TOTAL,
     )
 
     assert (
-        response[
-            "version_artefacto"
-        ]
+        response["version_artefacto"]
         == 4
     )
 
     assert (
-        response[
-            "tipo_ejecucion"
-        ]
+        response["tipo_ejecucion"]
         == "explicabilidad_shap"
     )
 
-    shap_execution_id = response[
-        "id_ejecucion"
-    ]
+    shap_execution_id = (
+        response["id_ejecucion"]
+    )
 
     training_execution_id = response[
         "id_ejecucion_entrenamiento"
@@ -301,9 +282,7 @@ def test_final_response_is_complete_and_traceable(
     )
 
     assert (
-        shap_config[
-            "truncated"
-        ]
+        shap_config["truncated"]
         is False
     )
 
@@ -320,7 +299,8 @@ def test_final_response_is_complete_and_traceable(
         prediction[
             "publication_id"
         ]
-        for prediction in predictions
+        for prediction
+        in predictions
     }
 
     assert (
@@ -329,58 +309,379 @@ def test_final_response_is_complete_and_traceable(
     )
 
     assert all(
-        prediction[
-            "id_ejecucion"
-        ]
-        == shap_execution_id
-        for prediction in predictions
+        (
+            prediction[
+                "id_ejecucion"
+            ]
+            == shap_execution_id
+        )
+        for prediction
+        in predictions
     )
 
     assert all(
-        prediction[
-            "id_ejecucion_entrenamiento"
-        ]
-        == training_execution_id
-        for prediction in predictions
+        (
+            prediction[
+                "id_ejecucion_entrenamiento"
+            ]
+            == training_execution_id
+        )
+        for prediction
+        in predictions
     )
 
     assert all(
-        prediction[
-            "categoria_ss_ekmeans"
-        ]
-        in {
-            "A",
-            "B",
-            "C",
-        }
-        for prediction in predictions
-    )
-
-    assert all(
-        prediction[
-            "categoria_sustituto"
-        ]
-        in {
-            "A",
-            "B",
-            "C",
-        }
-        for prediction in predictions
-    )
-
-    assert all(
-        prediction[
-            "concordancia"
-        ]
-        == (
+        (
             prediction[
                 "categoria_ss_ekmeans"
             ]
-            == prediction[
+            in {
+                "A",
+                "B",
+                "C",
+            }
+        )
+        for prediction
+        in predictions
+    )
+
+    assert all(
+        (
+            prediction[
                 "categoria_sustituto"
             ]
+            in {
+                "A",
+                "B",
+                "C",
+            }
         )
-        for prediction in predictions
+        for prediction
+        in predictions
+    )
+
+    assert all(
+        (
+            prediction[
+                "concordancia"
+            ]
+            == (
+                prediction[
+                    "categoria_ss_ekmeans"
+                ]
+                == prediction[
+                    "categoria_sustituto"
+                ]
+            )
+        )
+        for prediction
+        in predictions
+    )
+
+
+def test_training_metrics_preserve_the_official_class_order(
+    response: dict[str, Any],
+) -> None:
+    metrics = response[
+        "metrics_entrenamiento"
+    ]
+
+    assert (
+        metrics["classes"]
+        == list(CLASSES)
+    )
+
+    assert (
+        metrics["n_total"]
+        == EXPECTED_TOTAL
+    )
+
+    assert (
+        metrics["n_train"]
+        + metrics["n_test"]
+        == EXPECTED_TOTAL
+    )
+
+    confusion_matrix = metrics[
+        "confusion_matrix"
+    ]
+
+    assert (
+        len(confusion_matrix)
+        == len(CLASSES)
+    )
+
+    assert all(
+        (
+            len(row)
+            == len(CLASSES)
+        )
+        for row
+        in confusion_matrix
+    )
+
+    assert (
+        sum(
+            sum(
+                int(value)
+                for value
+                in row
+            )
+            for row
+            in confusion_matrix
+        )
+        == metrics["n_test"]
+    )
+
+    assert (
+        0.0
+        <= float(
+            metrics["accuracy"]
+        )
+        <= 1.0
+    )
+
+    assert (
+        0.0
+        <= float(
+            metrics[
+                "balanced_accuracy"
+            ]
+        )
+        <= 1.0
+    )
+
+    assert (
+        0.0
+        <= float(
+            metrics["macro_f1"]
+        )
+        <= 1.0
+    )
+
+
+def test_surrogate_category_uses_full_precision_probabilities(
+    response: dict[str, Any],
+) -> None:
+    for prediction in response[
+        "predicciones"
+    ]:
+        probabilities = prediction[
+            "probabilidades"
+        ]
+
+        assert (
+            list(probabilities)
+            == list(CLASSES)
+        )
+
+        probability_sum = sum(
+            float(
+                probabilities[
+                    class_name
+                ]
+            )
+            for class_name
+            in CLASSES
+        )
+
+        assert (
+            probability_sum
+            == pytest.approx(
+                1.0,
+                abs=1e-9,
+            )
+        )
+
+        expected_category = max(
+            CLASSES,
+            key=lambda class_name: float(
+                probabilities[
+                    class_name
+                ]
+            ),
+        )
+
+        assert (
+            prediction[
+                "prediccion"
+            ]
+            == expected_category
+        )
+
+        assert (
+            prediction[
+                "categoria_sustituto"
+            ]
+            == expected_category
+        )
+
+        assert (
+            prediction[
+                "explicacion_clase"
+            ]
+            == expected_category
+        )
+
+        ordered_probabilities = sorted(
+            (
+                float(
+                    probabilities[
+                        class_name
+                    ]
+                )
+                for class_name
+                in CLASSES
+            ),
+            reverse=True,
+        )
+
+        probability_margin = (
+            ordered_probabilities[0]
+            - ordered_probabilities[1]
+        )
+
+        assert (
+            0.0
+            <= probability_margin
+            <= 1.0
+        )
+
+
+def test_additivity_is_valid_for_every_explanation(
+    response: dict[str, Any],
+) -> None:
+    (
+        rows,
+        exceptions,
+        tolerance,
+    ) = build_additivity_rows(
+        response
+    )
+
+    validation = response[
+        "validacion_aditividad"
+    ]
+
+    assert (
+        len(rows)
+        == EXPECTED_TOTAL
+    )
+
+    assert (
+        exceptions
+        == []
+    )
+
+    assert (
+        tolerance
+        == pytest.approx(
+            float(
+                validation[
+                    "tolerance"
+                ]
+            ),
+            abs=0.0,
+        )
+    )
+
+    assert (
+        validation[
+            "cumple_tolerancia"
+        ]
+        is True
+    )
+
+    calculated_errors: list[
+        float
+    ] = []
+
+    for prediction in response[
+        "predicciones"
+    ]:
+        explained_class = prediction[
+            "explicacion_clase"
+        ]
+
+        predicted_probability = float(
+            prediction[
+                "probabilidades"
+            ][
+                explained_class
+            ]
+        )
+
+        reconstructed_probability = float(
+            prediction[
+                "probabilidad_reconstruida"
+            ]
+        )
+
+        reconstructed_from_contributions = (
+            float(
+                prediction[
+                    "valor_base"
+                ]
+            )
+            + sum(
+                float(
+                    contribution[
+                        "shap_value"
+                    ]
+                )
+                for contribution
+                in prediction[
+                    "contribuciones"
+                ]
+            )
+        )
+
+        calculated_error = abs(
+            predicted_probability
+            - reconstructed_probability
+        )
+
+        calculated_errors.append(
+            calculated_error
+        )
+
+        assert (
+            reconstructed_from_contributions
+            == pytest.approx(
+                reconstructed_probability,
+                abs=1e-12,
+            )
+        )
+
+        assert (
+            abs(
+                float(
+                    prediction[
+                        "error_aditividad"
+                    ]
+                )
+            )
+            == pytest.approx(
+                calculated_error,
+                abs=1e-12,
+            )
+        )
+
+        assert (
+            calculated_error
+            <= tolerance
+        )
+
+    assert (
+        max(calculated_errors)
+        == pytest.approx(
+            float(
+                validation[
+                    "max_absolute_error"
+                ]
+            ),
+            abs=1e-12,
+        )
     )
 
 
@@ -471,14 +772,16 @@ def test_final_concordance_matches_official_results(
         prediction[
             "categoria_ss_ekmeans"
         ]
-        for prediction in predictions
+        for prediction
+        in predictions
     )
 
     surrogate_counts = Counter(
         prediction[
             "categoria_sustituto"
         ]
-        for prediction in predictions
+        for prediction
+        in predictions
     )
 
     assert (
@@ -493,7 +796,8 @@ def test_final_concordance_matches_official_results(
 
     discrepancies = [
         prediction
-        for prediction in predictions
+        for prediction
+        in predictions
         if (
             prediction[
                 "concordancia"
@@ -508,6 +812,61 @@ def test_final_concordance_matches_official_results(
     )
 
 
+def test_concordance_summary_is_reconstructed_from_predictions(
+    response: dict[str, Any],
+) -> None:
+    reconstructed = (
+        build_concordance_summary(
+            response[
+                "predicciones"
+            ]
+        )
+    )
+
+    received = response[
+        "resumen_concordancia"
+    ]
+
+    for (
+        key,
+        value,
+    ) in reconstructed.items():
+        if key in {
+            "tasa_concordancia",
+            "porcentaje_concordancia",
+        }:
+            assert (
+                received[key]
+                == pytest.approx(
+                    value,
+                    abs=1e-12,
+                )
+            )
+        else:
+            assert (
+                received[key]
+                == value
+            )
+
+    assert (
+        received[
+            "id_ejecucion"
+        ]
+        == response[
+            "id_ejecucion"
+        ]
+    )
+
+    assert (
+        received[
+            "id_ejecucion_entrenamiento"
+        ]
+        == response[
+            "id_ejecucion_entrenamiento"
+        ]
+    )
+
+
 def test_representative_cases_are_concordant(
     response: dict[str, Any],
 ) -> None:
@@ -517,11 +876,14 @@ def test_representative_cases_are_concordant(
         )
     )
 
-    assert set(cases) == {
-        "A",
-        "B",
-        "C",
-    }
+    assert (
+        set(cases)
+        == {
+            "A",
+            "B",
+            "C",
+        }
+    )
 
     for (
         category,
@@ -609,7 +971,8 @@ def test_concordance_rows_preserve_execution_ids(
                     "cantidad"
                 ]
             )
-            for row in transition_rows
+            for row
+            in transition_rows
         )
         == EXPECTED_TOTAL
     )
@@ -627,7 +990,8 @@ def test_concordance_rows_preserve_execution_ids(
                 ]
                 is False
             )
-            for row in detail_rows
+            for row
+            in detail_rows
         )
         == EXPECTED_DISCREPANCIES
     )
@@ -671,14 +1035,99 @@ def test_validation_rejects_an_inconsistent_execution_id(
     with pytest.raises(
         ValueError,
         match=(
-            "id_ejecucion inconsistente"
+            "id_ejecucion "
+            "inconsistente"
         ),
     ):
         validate_response(
             altered,
-            expected_products=(
-                EXPECTED_TOTAL
-            ),
+            expected_products=EXPECTED_TOTAL,
+        )
+
+
+def test_validation_rejects_an_inconsistent_training_execution_id(
+    response: dict[str, Any],
+) -> None:
+    altered = deepcopy(
+        response
+    )
+
+    altered[
+        "predicciones"
+    ][0][
+        "id_ejecucion_entrenamiento"
+    ] = "train-alterado"
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "id_ejecucion_entrenamiento "
+            "inconsistente"
+        ),
+    ):
+        validate_response(
+            altered,
+            expected_products=EXPECTED_TOTAL,
+        )
+
+
+def test_validation_rejects_a_duplicated_publication_id(
+    response: dict[str, Any],
+) -> None:
+    altered = deepcopy(
+        response
+    )
+
+    altered[
+        "predicciones"
+    ][1][
+        "publication_id"
+    ] = altered[
+        "predicciones"
+    ][0][
+        "publication_id"
+    ]
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "publication_id "
+            "duplicado"
+        ),
+    ):
+        validate_response(
+            altered,
+            expected_products=EXPECTED_TOTAL,
+        )
+
+
+def test_validation_rejects_an_inconsistent_concordance_indicator(
+    response: dict[str, Any],
+) -> None:
+    altered = deepcopy(
+        response
+    )
+
+    altered[
+        "predicciones"
+    ][0][
+        "concordancia"
+    ] = not altered[
+        "predicciones"
+    ][0][
+        "concordancia"
+    ]
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "Indicador de concordancia "
+            "inconsistente"
+        ),
+    ):
+        validate_response(
+            altered,
+            expected_products=EXPECTED_TOTAL,
         )
 
 
@@ -701,9 +1150,7 @@ def test_validation_rejects_a_truncated_response(
     ):
         validate_response(
             altered,
-            expected_products=(
-                EXPECTED_TOTAL
-            ),
+            expected_products=EXPECTED_TOTAL,
         )
 
 
@@ -721,7 +1168,10 @@ def test_generator_creates_traceable_final_artifacts(
         sys,
         "argv",
         [
-            "generate_shap_result_figures.py",
+            (
+                "generate_shap_"
+                "result_figures.py"
+            ),
             "--explain-response",
             str(
                 RESPONSE_PATH
@@ -743,7 +1193,8 @@ def test_generator_creates_traceable_final_artifacts(
 
     generated_files = {
         path.name
-        for path in output_dir.iterdir()
+        for path
+        in output_dir.iterdir()
         if path.is_file()
     }
 
@@ -762,7 +1213,9 @@ def test_generator_creates_traceable_final_artifacts(
         in generated_files
     )
 
-    for figure_name in EXPECTED_FIGURES:
+    for figure_name in (
+        EXPECTED_FIGURES
+    ):
         figure_path = (
             output_dir
             / figure_name
@@ -773,7 +1226,9 @@ def test_generator_creates_traceable_final_artifacts(
             > 0
         )
 
-    for table_name in EXPECTED_TABLES:
+    for table_name in (
+        EXPECTED_TABLES
+    ):
         (
             columns,
             rows,
@@ -782,10 +1237,13 @@ def test_generator_creates_traceable_final_artifacts(
             / table_name
         )
 
-        assert columns[:2] == [
-            "id_ejecucion",
-            "id_ejecucion_entrenamiento",
-        ]
+        assert (
+            columns[:2]
+            == [
+                "id_ejecucion",
+                "id_ejecucion_entrenamiento",
+            ]
+        )
 
         for row in rows:
             assert (
@@ -817,10 +1275,13 @@ def test_generator_creates_traceable_final_artifacts(
         )
     )
 
-    assert detail_columns[:2] == [
-        "id_ejecucion",
-        "id_ejecucion_entrenamiento",
-    ]
+    assert (
+        detail_columns[:2]
+        == [
+            "id_ejecucion",
+            "id_ejecucion_entrenamiento",
+        ]
+    )
 
     assert (
         len(detail_rows)
@@ -835,7 +1296,8 @@ def test_generator_creates_traceable_final_artifacts(
                 ]
                 == "False"
             )
-            for row in detail_rows
+            for row
+            in detail_rows
         )
         == EXPECTED_DISCREPANCIES
     )

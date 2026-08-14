@@ -10,6 +10,17 @@ DEFAULT_PROPORTIONS = {
     "C": 0.50,
 }
 
+N_CLUSTERS = len(DEFAULT_PROPORTIONS)
+
+# Con tres categorías, las métricas internas requieren al menos una
+# observación más que la cantidad de clusters: 2 <= k <= n - 1.
+MIN_TECHNICAL_SAMPLES = N_CLUSTERS + 1
+
+# Umbral adoptado para las ejecuciones operacionales de clasificación,
+# optimización y entrenamiento del sustituto. Se evalúa después de
+# excluir registros inválidos.
+MIN_OPERATIONAL_SAMPLES = 20
+
 
 @dataclass(frozen=True)
 class SSEKMeansConfig:

@@ -7,7 +7,10 @@ import pandas as pd
 
 from app.ml.assignment.constrained_assignment import assign_with_capacity
 from app.ml.constraints.capacity_constraint import compute_capacities
-from app.ml.core.config import SSEKMeansConfig
+from app.ml.core.config import (
+    MIN_TECHNICAL_SAMPLES,
+    SSEKMeansConfig,
+)
 from app.ml.core.types import LABELS_ABC, RunResult
 from app.ml.initialization.centroid_initializer import (
     compute_initial_score,
@@ -348,6 +351,13 @@ class SSEKMeans:
 
         if X.empty:
             raise ValueError("X no puede estar vacío.")
+
+        if len(X) < MIN_TECHNICAL_SAMPLES:
+            raise ValueError(
+                "SS-EKMeans con tres categorías requiere al menos "
+                f"{MIN_TECHNICAL_SAMPLES} observaciones para cumplir "
+                "2 <= k <= n - 1 y calcular las métricas internas."
+            )
 
         non_numeric = [
             col

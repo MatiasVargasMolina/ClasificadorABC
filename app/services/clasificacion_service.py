@@ -1,3 +1,4 @@
+from app.ml.core.config import MIN_OPERATIONAL_SAMPLES
 from app.services.preprocessing_service import ejecutar_preprocesamiento
 from app.services.kmeans_service import ejecutar_ss_kmeans
 
@@ -8,24 +9,50 @@ def ejecutar_clasificacion(data):
     if not resultado_preprocesamiento["hay_validos"]:
         return {
             "mensaje": resultado_preprocesamiento["mensaje"],
+            "productos_validos": 0,
             "resultados": [],
-            "productos_invalidos": resultado_preprocesamiento["productos_invalidos"],
+            "productos_invalidos": (
+                resultado_preprocesamiento["productos_invalidos"]
+            ),
+            "minimo_operacional": MIN_OPERATIONAL_SAMPLES,
         }
 
-    # Ejecutar SSEKMeans sin semillas
+    cantidad_validos = len(
+        resultado_preprocesamiento["productos_validos"]
+    )
+
+    if cantidad_validos < MIN_OPERATIONAL_SAMPLES:
+        return {
+            "mensaje": (
+                "Se requieren al menos "
+                f"{MIN_OPERATIONAL_SAMPLES} publicaciones válidas "
+                "después de excluir registros inconsistentes. "
+                f"Se obtuvieron {cantidad_validos}."
+            ),
+            "productos_validos": cantidad_validos,
+            "productos_invalidos": (
+                resultado_preprocesamiento["productos_invalidos"]
+            ),
+            "minimo_operacional": MIN_OPERATIONAL_SAMPLES,
+            "resultados": [],
+        }
+
     resultados_kmeans, diagnostico = ejecutar_ss_kmeans(
         X=resultado_preprocesamiento["X_modelo"],
     )
 
-    # Combinar resultados con datos originales transformados
     df_resultados = resultado_preprocesamiento["df_transformado"].copy()
     df_resultados["categoria"] = resultados_kmeans["categoria"].values
-    df_resultados["score_inicial"] = resultados_kmeans["score_inicial"].values
+    df_resultados["score_inicial"] = (
+        resultados_kmeans["score_inicial"].values
+    )
 
     return {
         "mensaje": "Clasificación ejecutada correctamente",
-        "productos_validos": len(resultado_preprocesamiento["productos_validos"]),
-        "productos_invalidos": resultado_preprocesamiento["productos_invalidos"],
+        "productos_validos": cantidad_validos,
+        "productos_invalidos": (
+            resultado_preprocesamiento["productos_invalidos"]
+        ),
         "resultados": df_resultados.to_dict(orient="records"),
         "diagnostico": {
             "capacidades_objetivo": diagnostico["capacidades_objetivo"],
