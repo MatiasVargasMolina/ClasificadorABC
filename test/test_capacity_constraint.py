@@ -43,3 +43,19 @@ def test_compute_capacities_rejects_non_positive_total_weight():
             n_samples=10,
             proportions={"A": 0.0, "B": 0.0, "C": 0.0},
         )
+def test_compute_capacities_uses_largest_remainder_for_four_samples():
+    capacities = compute_capacities(
+        n_samples=4,
+        proportions={"A": 0.20, "B": 0.30, "C": 0.50},
+    )
+
+    assert capacities == {"A": 1, "B": 1, "C": 2}
+    assert sum(capacities.values()) == 4
+
+
+def test_compute_capacities_rejects_a_zero_capacity_category():
+    with pytest.raises(ValueError, match="Capacidades en cero"):
+        compute_capacities(
+            n_samples=20,
+            proportions={"A": 0.01, "B": 0.49, "C": 0.50},
+        )
