@@ -69,14 +69,224 @@ def test_explainability_query_parameters_are_validated():
 def test_optimization_route_delegates_to_service(monkeypatch):
     monkeypatch.setattr(
         "app.api.routes.optimization.OptimizationService.optimize",
-        lambda self, request: {
-            "best_params": {"n_init": 10},
+        lambda self, request, metodo_asignacion="global": {
+            "best_params": {
+                "n_init": 10,
+            },
             "productos": len(request.productos),
+            "metodo_asignacion_utilizado": metodo_asignacion,
         },
     )
-    response = client.post("/optimization/optuna", json=VALID_PAYLOAD)
+
+    response = client.post(
+        "/optimization/optuna",
+        json=VALID_PAYLOAD,
+    )
+
     assert response.status_code == 200
+
     assert response.json() == {
-        "best_params": {"n_init": 10},
+        "best_params": {
+            "n_init": 10,
+        },
         "productos": 1,
+        "metodo_asignacion_utilizado": "global",
     }
+def test_optimization_route_uses_global_by_default(monkeypatch):
+    captured = {}
+
+    def fake_optimize(
+        self,
+        request,
+        metodo_asignacion="global",
+    ):
+        captured["metodo"] = metodo_asignacion
+
+        return {
+            "metodo_asignacion_utilizado": metodo_asignacion,
+        }
+
+    monkeypatch.setattr(
+        "app.api.routes.optimization.OptimizationService.optimize",
+        fake_optimize,
+    )
+
+    response = client.post(
+        "/optimization/optuna",
+        json=VALID_PAYLOAD,
+    )
+
+    assert response.status_code == 200
+    assert captured["metodo"] == "global"
+
+    assert (
+        response.json()["metodo_asignacion_utilizado"]
+        == "global"
+    )
+
+
+def test_optimization_route_accepts_sequential_assignment(
+    monkeypatch,
+):
+    captured = {}
+
+    def fake_optimize(
+        self,
+        request,
+        metodo_asignacion="global",
+    ):
+        captured["metodo"] = metodo_asignacion
+
+        return {
+            "metodo_asignacion_utilizado": metodo_asignacion,
+        }
+
+    monkeypatch.setattr(
+        "app.api.routes.optimization.OptimizationService.optimize",
+        fake_optimize,
+    )
+
+    response = client.post(
+        "/optimization/optuna?metodo_asignacion=secuencial",
+        json=VALID_PAYLOAD,
+    )
+
+    assert response.status_code == 200
+    assert captured["metodo"] == "secuencial"
+
+    assert (
+        response.json()["metodo_asignacion_utilizado"]
+        == "secuencial"
+    )
+
+
+def test_optimization_route_rejects_invalid_assignment_method(
+    monkeypatch,
+):
+    called = False
+
+    def fake_optimize(
+        self,
+        request,
+        metodo_asignacion="global",
+    ):
+        nonlocal called
+        called = True
+        return {}
+
+    monkeypatch.setattr(
+        "app.api.routes.optimization.OptimizationService.optimize",
+        fake_optimize,
+    )
+
+    response = client.post(
+        "/optimization/optuna?metodo_asignacion=invalido",
+        json=VALID_PAYLOAD,
+    )
+
+    assert response.status_code == 422
+    assert called is False
+def test_surrogate_train_uses_global_by_default(monkeypatch):
+    captured = {}
+
+    def fake_train(
+        data,
+        time_left_for_this_task=600,
+        per_run_time_limit=60,
+        metodo_asignacion="global",
+    ):
+        captured["metodo"] = metodo_asignacion
+
+        return {
+            "metodo_asignacion_utilizado": metodo_asignacion,
+        }
+
+    monkeypatch.setattr(
+        "app.api.routes.explainability.entrenar_surrogate_autosklearn",
+        fake_train,
+    )
+
+    response = client.post(
+        "/api/explainability/autosklearn/train",
+        json=VALID_PAYLOAD,
+    )
+
+    assert response.status_code == 200
+    assert captured["metodo"] == "global"
+
+    assert (
+        response.json()["metodo_asignacion_utilizado"]
+        == "global"
+    )
+
+
+def test_surrogate_train_accepts_sequential_assignment(
+    monkeypatch,
+):
+    captured = {}
+
+    def fake_train(
+        data,
+        time_left_for_this_task=600,
+        per_run_time_limit=60,
+        metodo_asignacion="global",
+    ):
+        captured["metodo"] = metodo_asignacion
+
+        return {
+            "metodo_asignacion_utilizado": metodo_asignacion,
+        }
+
+    monkeypatch.setattr(
+        "app.api.routes.explainability.entrenar_surrogate_autosklearn",
+        fake_train,
+    )
+
+    response = client.post(
+        (
+            "/api/explainability/autosklearn/train"
+            "?metodo_asignacion=secuencial"
+        ),
+        json=VALID_PAYLOAD,
+    )
+
+    assert response.status_code == 200
+    assert captured["metodo"] == "secuencial"
+
+    assert (
+        response.json()["metodo_asignacion_utilizado"]
+        == "secuencial"
+    )
+
+
+def test_surrogate_train_rejects_invalid_assignment_method(
+    monkeypatch,
+):
+    called = False
+
+    def fake_train(
+        data,
+        time_left_for_this_task=600,
+        per_run_time_limit=60,
+        metodo_asignacion="global",
+    ):
+        nonlocal called
+        called = True
+
+        return {}
+
+    monkeypatch.setattr(
+        "app.api.routes.explainability.entrenar_surrogate_autosklearn",
+        fake_train,
+    )
+
+    response = client.post(
+        (
+            "/api/explainability/autosklearn/train"
+            "?metodo_asignacion=invalido"
+        ),
+        json=VALID_PAYLOAD,
+    )
+
+    assert response.status_code == 422
+    assert called is False

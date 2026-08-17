@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Literal
 
 import numpy as np
 import pandas as pd
@@ -7,11 +7,17 @@ from scipy.optimize import linear_sum_assignment
 
 LABELS_ABC = ("A", "B", "C")
 
+MetodoAsignacion = Literal["global", "secuencial"]
+
 
 def compute_distance_matrix(
     X: pd.DataFrame,
     centers: pd.DataFrame,
 ) -> pd.DataFrame:
+    """
+    Calcula las distancias euclidianas al cuadrado entre cada
+    observación y los centroides A, B y C.
+    """
     x = X.to_numpy(dtype=float)
     c = centers.loc[list(LABELS_ABC)].to_numpy(dtype=float)
 
@@ -26,16 +32,10 @@ def compute_distance_matrix(
     )
 
 
-def assign_with_capacity(
+def _validate_capacities(
     X: pd.DataFrame,
-    centers: pd.DataFrame,
     capacities: Dict[str, int],
-    rng: np.random.Generator,
-    shuffle_unlabeled: bool = True,
-) -> pd.Series:
-    del rng
-    del shuffle_unlabeled
-
+) -> None:
     missing_labels = [
         label
         for label in LABELS_ABC
@@ -71,6 +71,44 @@ def assign_with_capacity(
             f"la cantidad de observaciones. Capacidad={total_capacity}, "
             f"observaciones={len(X)}."
         )
+
+
+def _validate_assignment_result(
+    labels: pd.Series,
+    capacities: Dict[str, int],
+) -> None:
+    if labels.isna().any():
+        raise RuntimeError(
+            "La asignación produjo observaciones sin categoría."
+        )
+
+    counts = labels.value_counts().to_dict()
+
+    for label in LABELS_ABC:
+        if counts.get(label, 0) != capacities[label]:
+            raise RuntimeError(
+                "La asignación no respetó la capacidad de "
+                f"{label}: esperado={capacities[label]}, "
+                f"obtenido={counts.get(label, 0)}."
+            )
+
+
+def assign_with_capacity_global(
+    X: pd.DataFrame,
+    centers: pd.DataFrame,
+    capacities: Dict[str, int],
+) -> pd.Series:
+    """
+    Asignación global con capacidades.
+
+    Construye un problema de asignación global y minimiza
+    conjuntamente el costo de distancia mediante
+    scipy.optimize.linear_sum_assignment.
+    """
+    _validate_capacities(
+        X=X,
+        capacities=capacities,
+    )
 
     distance_matrix = compute_distance_matrix(
         X=X,
@@ -118,19 +156,157 @@ def assign_with_capacity(
     ):
         labels.iloc[row_position] = slot_labels[column_position]
 
-    if labels.isna().any():
-        raise RuntimeError(
-            "La asignación produjo observaciones sin categoría."
-        )
-
-    counts = labels.value_counts().to_dict()
-
-    for label in LABELS_ABC:
-        if counts.get(label, 0) != capacities[label]:
-            raise RuntimeError(
-                "La asignación no respetó la capacidad de "
-                f"{label}: esperado={capacities[label]}, "
-                f"obtenido={counts.get(label, 0)}."
-            )
+    _validate_assignment_result(
+        labels=labels,
+        capacities=capacities,
+    )
 
     return labels.astype(str)
+
+
+def assign_with_capacity_sequential(
+    X: pd.DataFrame,
+    centers: pd.DataFrame,
+    capacities: Dict[str, int],
+    rng: np.random.Generator,
+    shuffle_unlabeled: bool = True,
+) -> pd.Series:
+    """
+    Asignación secuencial con capacidades.
+
+    Prioriza las observaciones cuya asignación es más clara y
+    las procesa individualmente, asignándolas al centroide
+    disponible más cercano.
+    """
+    _validate_capacities(
+        X=X,
+        capacities=capacities,
+    )
+
+    # La implementación histórica secuencial trabajaba con
+    # distancia euclidiana, no con distancia al cuadrado.
+    distance_matrix = np.sqrt(
+        compute_distance_matrix(
+            X=X,
+            centers=centers,
+        )
+    )
+
+    if shuffle_unlabeled:
+        shuffled_idx = np.array(
+            distance_matrix.index.to_list(),
+            dtype=object,
+        )
+
+        rng.shuffle(shuffled_idx)
+
+        distance_matrix = distance_matrix.loc[
+            list(shuffled_idx)
+        ]
+
+    distances = distance_matrix.to_numpy(dtype=float)
+
+    ranked = np.sort(
+        distances,
+        axis=1,
+    )
+
+    best = ranked[:, 0]
+
+    second = (
+        ranked[:, 1]
+        if ranked.shape[1] > 1
+        else ranked[:, 0]
+    )
+
+    priority = pd.DataFrame(
+        {
+            "best": best,
+            "confidence": second - best,
+        },
+        index=distance_matrix.index,
+    ).sort_values(
+        by=["confidence", "best"],
+        ascending=[False, True],
+        kind="mergesort",
+    )
+
+    labels = pd.Series(
+        index=X.index,
+        dtype="object",
+    )
+
+    counts = {
+        label: 0
+        for label in LABELS_ABC
+    }
+
+    for idx in priority.index:
+        sorted_labels = (
+            distance_matrix
+            .loc[idx]
+            .sort_values(kind="mergesort")
+            .index
+            .tolist()
+        )
+
+        assigned = False
+
+        for label in sorted_labels:
+            if counts[label] < capacities[label]:
+                labels.at[idx] = label
+                counts[label] += 1
+                assigned = True
+                break
+
+        if not assigned:
+            raise RuntimeError(
+                "No fue posible asignar una observación "
+                "respetando las capacidades."
+            )
+
+    _validate_assignment_result(
+        labels=labels,
+        capacities=capacities,
+    )
+
+    return labels.astype(str)
+
+
+def assign_with_capacity(
+    X: pd.DataFrame,
+    centers: pd.DataFrame,
+    capacities: Dict[str, int],
+    rng: np.random.Generator,
+    shuffle_unlabeled: bool = True,
+    metodo_asignacion: MetodoAsignacion = "global",
+) -> pd.Series:
+    """
+    Selecciona el método de asignación utilizado por SS-EKMeans.
+
+    global:
+        Minimización conjunta mediante linear_sum_assignment.
+
+    secuencial:
+        Asignación publicación por publicación respetando capacidades.
+    """
+    if metodo_asignacion == "global":
+        return assign_with_capacity_global(
+            X=X,
+            centers=centers,
+            capacities=capacities,
+        )
+
+    if metodo_asignacion == "secuencial":
+        return assign_with_capacity_sequential(
+            X=X,
+            centers=centers,
+            capacities=capacities,
+            rng=rng,
+            shuffle_unlabeled=shuffle_unlabeled,
+        )
+
+    raise ValueError(
+        "metodo_asignacion debe ser 'global' o 'secuencial'. "
+        f"Valor recibido: {metodo_asignacion!r}."
+    )

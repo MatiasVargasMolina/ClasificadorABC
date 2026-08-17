@@ -46,9 +46,9 @@ def test_clasificar_endpoint_serializes_service_response(monkeypatch):
         ],
     }
     monkeypatch.setattr(
-        "app.api.routes.clasificacion.ejecutar_clasificacion",
-        lambda data: expected,
-    )
+    "app.api.routes.clasificacion.ejecutar_clasificacion",
+    lambda data, metodo_asignacion="global": expected,
+)
     response = client.post("/api/clasificar", json=VALID_PAYLOAD)
     assert response.status_code == 200
     assert response.json() == expected
@@ -90,3 +90,110 @@ def test_clasificar_endpoint_requires_twenty_valid_products():
     assert body["minimo_operacional"] == 20
     assert body["resultados"] == []
     assert "después de excluir" in body["mensaje"]
+def test_clasificar_uses_global_by_default(monkeypatch):
+    captured = {}
+
+    def fake_ejecutar_clasificacion(
+        data,
+        metodo_asignacion="global",
+    ):
+        captured["metodo"] = metodo_asignacion
+
+        return {
+            "mensaje": "ok",
+            "productos_validos": 1,
+            "productos_invalidos": [],
+            "resultados": [],
+        }
+
+    monkeypatch.setattr(
+        "app.api.routes.clasificacion.ejecutar_clasificacion",
+        fake_ejecutar_clasificacion,
+    )
+
+    response = client.post(
+        "/api/clasificar",
+        json=VALID_PAYLOAD,
+    )
+
+    assert response.status_code == 200
+    assert captured["metodo"] == "global"
+
+
+def test_clasificar_accepts_sequential_assignment(
+    monkeypatch,
+):
+    captured = {}
+
+    def fake_ejecutar_clasificacion(
+        data,
+        metodo_asignacion="global",
+    ):
+        captured["metodo"] = metodo_asignacion
+
+        return {
+            "mensaje": "ok",
+            "productos_validos": 1,
+            "productos_invalidos": [],
+            "metodo_asignacion_utilizado": (
+                metodo_asignacion
+            ),
+            "resultados": [],
+        }
+
+    monkeypatch.setattr(
+        "app.api.routes.clasificacion.ejecutar_clasificacion",
+        fake_ejecutar_clasificacion,
+    )
+
+    response = client.post(
+        (
+            "/api/clasificar"
+            "?metodo_asignacion=secuencial"
+        ),
+        json=VALID_PAYLOAD,
+    )
+
+    assert response.status_code == 200
+
+    assert (
+        captured["metodo"]
+        == "secuencial"
+    )
+
+    assert (
+        response.json()[
+            "metodo_asignacion_utilizado"
+        ]
+        == "secuencial"
+    )
+
+
+def test_clasificar_rejects_invalid_assignment_method(
+    monkeypatch,
+):
+    called = False
+
+    def fake_ejecutar_clasificacion(
+        data,
+        metodo_asignacion="global",
+    ):
+        nonlocal called
+        called = True
+        return {}
+
+    monkeypatch.setattr(
+        "app.api.routes.clasificacion.ejecutar_clasificacion",
+        fake_ejecutar_clasificacion,
+    )
+
+    response = client.post(
+        (
+            "/api/clasificar"
+            "?metodo_asignacion=invalido"
+        ),
+        json=VALID_PAYLOAD,
+    )
+
+    assert response.status_code == 422
+    assert called is False

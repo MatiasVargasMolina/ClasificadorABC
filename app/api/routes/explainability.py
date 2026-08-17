@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 
+from app.ml.assignment.constrained_assignment import MetodoAsignacion
 from app.schemas.input_schema import RequestInput
 from app.services.explainability_service import (
     entrenar_surrogate_autosklearn,
@@ -35,6 +36,14 @@ def train_surrogate_autosklearn(
         ge=10,
         le=300,
     ),
+    metodo_asignacion: MetodoAsignacion = Query(
+        default="global",
+        description=(
+            "Método de asignación utilizado por SS-EKMeans "
+            "para generar las etiquetas de entrenamiento. "
+            "Valores permitidos: global o secuencial."
+        ),
+    ),
 ):
     try:
         return entrenar_surrogate_autosklearn(
@@ -42,7 +51,10 @@ def train_surrogate_autosklearn(
             time_left_for_this_task=(
                 time_left_for_this_task
             ),
-            per_run_time_limit=per_run_time_limit,
+            per_run_time_limit=(
+                per_run_time_limit
+            ),
+            metodo_asignacion=metodo_asignacion,
         )
     except RuntimeError as exc:
         raise HTTPException(

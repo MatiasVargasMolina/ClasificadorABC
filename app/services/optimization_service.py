@@ -1,3 +1,4 @@
+from app.ml.assignment.constrained_assignment import MetodoAsignacion
 from app.ml.core.config import MIN_OPERATIONAL_SAMPLES
 from app.ml.optimization.optuna_optimizer import optimize_sse_kmeans
 from app.services.preprocessing_service import ejecutar_preprocesamiento
@@ -5,15 +6,23 @@ from app.services.preprocessing_service import ejecutar_preprocesamiento
 
 class OptimizationService:
 
-    def optimize(self, request):
-        resultado_preprocesamiento = ejecutar_preprocesamiento(request)
+    def optimize(
+        self,
+        request,
+        metodo_asignacion: MetodoAsignacion = "global",
+    ):
+        resultado_preprocesamiento = ejecutar_preprocesamiento(
+            request
+        )
 
         if not resultado_preprocesamiento["hay_validos"]:
             return {
                 "mensaje": resultado_preprocesamiento["mensaje"],
                 "productos_validos": 0,
                 "productos_invalidos": (
-                    resultado_preprocesamiento["productos_invalidos"]
+                    resultado_preprocesamiento[
+                        "productos_invalidos"
+                    ]
                 ),
                 "minimo_operacional": MIN_OPERATIONAL_SAMPLES,
                 "best_params": None,
@@ -25,7 +34,9 @@ class OptimizationService:
             }
 
         cantidad_validos = len(
-            resultado_preprocesamiento["productos_validos"]
+            resultado_preprocesamiento[
+                "productos_validos"
+            ]
         )
 
         if cantidad_validos < MIN_OPERATIONAL_SAMPLES:
@@ -38,7 +49,9 @@ class OptimizationService:
                 ),
                 "productos_validos": cantidad_validos,
                 "productos_invalidos": (
-                    resultado_preprocesamiento["productos_invalidos"]
+                    resultado_preprocesamiento[
+                        "productos_invalidos"
+                    ]
                 ),
                 "minimo_operacional": MIN_OPERATIONAL_SAMPLES,
                 "best_params": None,
@@ -54,13 +67,17 @@ class OptimizationService:
             n_trials=30,
             random_state=42,
             optimization_seeds=(0, 42, 123),
+            metodo_asignacion=metodo_asignacion,
         )
 
         return {
             "mensaje": "Optimización completada correctamente",
             "productos_validos": cantidad_validos,
             "productos_invalidos": (
-                resultado_preprocesamiento["productos_invalidos"]
+                resultado_preprocesamiento[
+                    "productos_invalidos"
+                ]
             ),
+            "metodo_asignacion_utilizado": metodo_asignacion,
             **result,
         }

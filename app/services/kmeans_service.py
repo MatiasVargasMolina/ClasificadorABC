@@ -1,3 +1,4 @@
+from app.ml.assignment.constrained_assignment import MetodoAsignacion
 from app.ml.core.config import get_production_config
 from app.ml.core.ss_kmeans import SSEKMeans
 from app.ml.metrics.clustering_metrics import evaluate_internal_metrics
@@ -6,6 +7,7 @@ from app.ml.metrics.clustering_metrics import evaluate_internal_metrics
 def ejecutar_ss_kmeans(
     X,
     proportions=None,
+    metodo_asignacion: MetodoAsignacion = "global",
 ):
     config = get_production_config(
         proportions=proportions,
@@ -13,6 +15,7 @@ def ejecutar_ss_kmeans(
 
     modelo = SSEKMeans(
         config=config,
+        metodo_asignacion=metodo_asignacion,
     )
 
     resultados = modelo.fit_predict(X)
@@ -30,7 +33,9 @@ def ejecutar_ss_kmeans(
             "n_init": modelo.n_init,
             "random_state": modelo.random_state,
             "shuffle_unlabeled": modelo.shuffle_unlabeled,
+            "metodo_asignacion": modelo.metodo_asignacion,
         },
+        "metodo_asignacion_utilizado": modelo.metodo_asignacion,
         "capacidades_objetivo": modelo.capacities_,
         "conteos_finales": modelo.counts_,
         "iteraciones": modelo.n_iter_,

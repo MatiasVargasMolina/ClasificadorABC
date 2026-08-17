@@ -5,7 +5,10 @@ from typing import Dict, Mapping, Optional
 import numpy as np
 import pandas as pd
 
-from app.ml.assignment.constrained_assignment import assign_with_capacity
+from app.ml.assignment.constrained_assignment import (
+    MetodoAsignacion,
+    assign_with_capacity,
+)
 from app.ml.constraints.capacity_constraint import compute_capacities
 from app.ml.core.config import (
     MIN_TECHNICAL_SAMPLES,
@@ -35,6 +38,7 @@ class SSEKMeans:
         n_init: int = 50,
         random_state: Optional[int] = 42,
         shuffle_unlabeled: bool = True,
+        metodo_asignacion: MetodoAsignacion = "global",
         config: Optional[SSEKMeansConfig] = None,
     ) -> None:
         if config is not None:
@@ -57,6 +61,12 @@ class SSEKMeans:
             self.n_init = n_init
             self.random_state = random_state
             self.shuffle_unlabeled = shuffle_unlabeled
+
+        # El método de asignación se selecciona por ejecución.
+        # No forma parte de SSEKMeansConfig para permitir que la API
+        # cambie entre global y secuencial manteniendo el resto de la
+        # configuración productiva.
+        self.metodo_asignacion: MetodoAsignacion = metodo_asignacion
 
         self._validate_parameters()
 
@@ -94,7 +104,10 @@ class SSEKMeans:
 
         for _ in range(self.n_init):
             run_rng = np.random.default_rng(
-                rng.integers(0, np.iinfo(np.int32).max)
+                rng.integers(
+                    0,
+                    np.iinfo(np.int32).max,
+                )
             )
 
             run = self._fit_single_run(
@@ -113,7 +126,9 @@ class SSEKMeans:
         ]
 
         self.converged_runs_ = len(converged_runs)
-        self.discarded_runs_ = len(runs) - len(converged_runs)
+        self.discarded_runs_ = (
+            len(runs) - len(converged_runs)
+        )
 
         if not converged_runs:
             reasons = ", ".join(
@@ -142,7 +157,9 @@ class SSEKMeans:
         self.fit(X)
 
         if self.results_ is None:
-            raise RuntimeError("El modelo no generó resultados.")
+            raise RuntimeError(
+                "El modelo no generó resultados."
+            )
 
         return self.results_.copy()
 
@@ -175,13 +192,17 @@ class SSEKMeans:
         converged = False
         stop_reason = "max_iter"
 
-        for iteration in range(1, self.max_iter + 1):
+        for iteration in range(
+            1,
+            self.max_iter + 1,
+        ):
             labels = assign_with_capacity(
                 X=X,
                 centers=centers,
                 capacities=capacities,
                 rng=rng,
                 shuffle_unlabeled=self.shuffle_unlabeled,
+                metodo_asignacion=self.metodo_asignacion,
             )
 
             new_centers = recompute_centroids(
@@ -196,7 +217,9 @@ class SSEKMeans:
                 centers=new_centers,
             )
 
-            objective_history.append(float(inertia))
+            objective_history.append(
+                float(inertia)
+            )
 
             labels_stable = (
                 previous_labels is not None
@@ -205,7 +228,9 @@ class SSEKMeans:
 
             cycle_period_2 = (
                 labels_two_iterations_ago is not None
-                and labels.equals(labels_two_iterations_ago)
+                and labels.equals(
+                    labels_two_iterations_ago
+                )
                 and not labels_stable
             )
 
@@ -254,17 +279,25 @@ class SSEKMeans:
             if converged or cycle_period_2:
                 break
 
-        if last_labels is None or not objective_history:
+        if (
+            last_labels is None
+            or not objective_history
+        ):
             raise RuntimeError(
-                "La corrida del modelo no generó resultados válidos."
+                "La corrida del modelo no generó "
+                "resultados válidos."
             )
 
-        counts = compute_cluster_counts(last_labels)
+        counts = compute_cluster_counts(
+            last_labels
+        )
 
         return RunResult(
             labels=last_labels,
             centers=centers,
-            inertia=float(objective_history[-1]),
+            inertia=float(
+                objective_history[-1]
+            ),
             objective_history=objective_history,
             n_iter=last_iteration,
             capacities=dict(capacities),
@@ -281,24 +314,45 @@ class SSEKMeans:
         self.labels_ = best_run.labels
         self.cluster_centers_ = best_run.centers
         self.inertia_ = best_run.inertia
-        self.objective_history_ = best_run.objective_history
+        self.objective_history_ = (
+            best_run.objective_history
+        )
         self.n_iter_ = best_run.n_iter
         self.capacities_ = best_run.capacities
         self.counts_ = best_run.counts
         self.score_ = best_run.scores
-        self.results_ = self._build_results(best_run)
+        self.results_ = self._build_results(
+            best_run
+        )
         self.converged_ = best_run.converged
         self.stop_reason_ = best_run.stop_reason
 
     def _validate_parameters(self) -> None:
         if self.max_iter < 1:
-            raise ValueError("max_iter debe ser mayor o igual a 1.")
+            raise ValueError(
+                "max_iter debe ser mayor o igual a 1."
+            )
 
         if self.n_init < 1:
-            raise ValueError("n_init debe ser mayor o igual a 1.")
+            raise ValueError(
+                "n_init debe ser mayor o igual a 1."
+            )
 
         if self.tol < 0:
-            raise ValueError("tol debe ser mayor o igual a 0.")
+            raise ValueError(
+                "tol debe ser mayor o igual a 0."
+            )
+
+        if self.metodo_asignacion not in {
+            "global",
+            "secuencial",
+        }:
+            raise ValueError(
+                "metodo_asignacion debe ser "
+                "'global' o 'secuencial'. "
+                "Valor recibido: "
+                f"{self.metodo_asignacion!r}."
+            )
 
         missing_labels = [
             label
@@ -308,8 +362,8 @@ class SSEKMeans:
 
         if missing_labels:
             raise ValueError(
-                "Faltan proporciones para las siguientes categorías: "
-                f"{missing_labels}"
+                "Faltan proporciones para las siguientes "
+                f"categorías: {missing_labels}"
             )
 
         invalid_labels = [
@@ -320,67 +374,95 @@ class SSEKMeans:
 
         if invalid_labels:
             raise ValueError(
-                "Se recibieron categorías inválidas en proportions: "
-                f"{invalid_labels}. Las categorías válidas son {LABELS_ABC}."
+                "Se recibieron categorías inválidas "
+                "en proportions: "
+                f"{invalid_labels}. "
+                "Las categorías válidas son "
+                f"{LABELS_ABC}."
             )
 
         invalid_values = {
             label: value
-            for label, value in self.proportions.items()
+            for label, value
+            in self.proportions.items()
             if value < 0
         }
 
         if invalid_values:
             raise ValueError(
-                "Las proporciones no pueden ser negativas. "
+                "Las proporciones no pueden ser "
+                "negativas. "
                 f"Valores inválidos: {invalid_values}"
             )
 
-        total = sum(self.proportions.values())
+        total = sum(
+            self.proportions.values()
+        )
 
-        if not np.isclose(total, 1.0):
+        if not np.isclose(
+            total,
+            1.0,
+        ):
             raise ValueError(
                 "Las proporciones deben sumar 1.0. "
                 f"Suma actual: {total}"
             )
 
     @staticmethod
-    def _validate_X(X: pd.DataFrame) -> pd.DataFrame:
-        if not isinstance(X, pd.DataFrame):
+    def _validate_X(
+        X: pd.DataFrame,
+    ) -> pd.DataFrame:
+        if not isinstance(
+            X,
+            pd.DataFrame,
+        ):
             X = pd.DataFrame(X)
 
         if X.empty:
-            raise ValueError("X no puede estar vacío.")
+            raise ValueError(
+                "X no puede estar vacío."
+            )
 
         if len(X) < MIN_TECHNICAL_SAMPLES:
             raise ValueError(
-                "SS-EKMeans con tres categorías requiere al menos "
-                f"{MIN_TECHNICAL_SAMPLES} observaciones para cumplir "
-                "2 <= k <= n - 1 y calcular las métricas internas."
+                "SS-EKMeans con tres categorías "
+                "requiere al menos "
+                f"{MIN_TECHNICAL_SAMPLES} "
+                "observaciones para cumplir "
+                "2 <= k <= n - 1 y calcular "
+                "las métricas internas."
             )
 
         non_numeric = [
             col
             for col in X.columns
-            if not pd.api.types.is_numeric_dtype(X[col])
+            if not pd.api.types.is_numeric_dtype(
+                X[col]
+            )
         ]
 
         if non_numeric:
             raise ValueError(
-                "Todas las columnas de X deben ser numéricas. "
+                "Todas las columnas de X deben "
+                "ser numéricas. "
                 f"Columnas inválidas: {non_numeric}"
             )
 
         if X.isna().any().any():
             raise ValueError(
                 "X contiene valores faltantes. "
-                "Debes imputar o eliminar NaN antes de clasificar."
+                "Debes imputar o eliminar NaN "
+                "antes de clasificar."
             )
 
-        return X.astype(float).copy()
+        return X.astype(
+            float
+        ).copy()
 
     @staticmethod
-    def _build_results(run: RunResult) -> pd.DataFrame:
+    def _build_results(
+        run: RunResult,
+    ) -> pd.DataFrame:
         cluster_map = {
             "A": 0,
             "B": 1,
@@ -390,7 +472,11 @@ class SSEKMeans:
         return pd.DataFrame(
             {
                 "categoria": run.labels,
-                "cluster": run.labels.map(cluster_map).astype(int),
+                "cluster": (
+                    run.labels
+                    .map(cluster_map)
+                    .astype(int)
+                ),
                 "score_inicial": run.scores,
             },
             index=run.labels.index,

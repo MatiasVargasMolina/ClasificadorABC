@@ -465,6 +465,421 @@ def generar_resumen(
 
     return summary
 
+def generar_figura_rendimiento(
+    summary: pd.DataFrame,
+    output_path: Path,
+) -> None:
+    """
+    Genera una figura con los principales indicadores
+    de latencia y rendimiento del proceso Kernel SHAP.
+    """
+    data = (
+        summary
+        .sort_values(
+            "tamano_solicitado"
+        )
+        .reset_index(drop=True)
+    )
+
+    sizes = (
+        data["tamano_solicitado"]
+        .astype(int)
+        .to_numpy()
+    )
+
+    positions = np.arange(
+        len(sizes)
+    )
+
+    latency_median = data[
+        "latencia_total_mediana_s"
+    ].to_numpy(dtype=float)
+
+    latency_minimum = data[
+        "latencia_total_minima_s"
+    ].to_numpy(dtype=float)
+
+    latency_maximum = data[
+        "latencia_total_maxima_s"
+    ].to_numpy(dtype=float)
+
+    throughput = data[
+        "productos_por_minuto_mediana"
+    ].to_numpy(dtype=float)
+
+    seconds_per_product = data[
+        "segundos_por_producto_mediana"
+    ].to_numpy(dtype=float)
+
+    shap_seconds = data[
+        "tiempo_shap_mediano_s"
+    ].to_numpy(dtype=float)
+
+    overhead_seconds = data[
+        "sobrecarga_api_mediana_s"
+    ].to_numpy(dtype=float)
+
+    measured_total = (
+        shap_seconds
+        + overhead_seconds
+    )
+
+    shap_percentage = np.divide(
+        shap_seconds * 100,
+        measured_total,
+        out=np.zeros_like(
+            shap_seconds
+        ),
+        where=measured_total > 0,
+    )
+
+    overhead_percentage = np.divide(
+        overhead_seconds * 100,
+        measured_total,
+        out=np.zeros_like(
+            overhead_seconds
+        ),
+        where=measured_total > 0,
+    )
+
+    lower_error = np.maximum(
+        0,
+        latency_median
+        - latency_minimum,
+    )
+
+    upper_error = np.maximum(
+        0,
+        latency_maximum
+        - latency_median,
+    )
+
+    latency_error = np.vstack(
+        [
+            lower_error,
+            upper_error,
+        ]
+    )
+
+    dark_blue = "#1F4E79"
+    medium_blue = "#5B84B1"
+    light_blue = "#AABBCD"
+    dark_gray = "#26313D"
+    grid_color = "#D8DEE5"
+
+    plt.rcParams.update(
+        {
+            "font.size": 13,
+            "axes.titlesize": 17,
+            "axes.labelsize": 14,
+            "xtick.labelsize": 12,
+            "ytick.labelsize": 12,
+            "legend.fontsize": 12,
+        }
+    )
+
+    figure, axes = plt.subplots(
+        nrows=2,
+        ncols=2,
+        figsize=(16, 10),
+        dpi=180,
+    )
+
+    figure.suptitle(
+        (
+            "Latencia y rendimiento del proceso "
+            "de explicabilidad con Kernel SHAP"
+        ),
+        fontsize=22,
+        fontweight="bold",
+        color=dark_gray,
+    )
+
+    # -------------------------------------------------
+    # 1. Latencia total
+    # -------------------------------------------------
+    latency_axis = axes[0, 0]
+
+    latency_axis.errorbar(
+        positions,
+        latency_median,
+        yerr=latency_error,
+        fmt="o-",
+        color=dark_blue,
+        linewidth=2.5,
+        markersize=8,
+        capsize=6,
+        capthick=1.5,
+    )
+
+    latency_axis.set_title(
+        "Latencia total por tamaño del lote",
+        fontweight="bold",
+    )
+
+    latency_axis.set_xlabel(
+        "Cantidad de publicaciones"
+    )
+
+    latency_axis.set_ylabel(
+        "Latencia total (segundos, escala logarítmica)"
+    )
+
+    latency_axis.set_xticks(
+        positions,
+        labels=sizes,
+    )
+
+    latency_axis.set_yscale("log")
+
+    latency_axis.grid(
+        axis="y",
+        color=grid_color,
+        linestyle="--",
+        alpha=0.8,
+    )
+
+    for position, value in zip(
+        positions,
+        latency_median,
+    ):
+        if value >= 60:
+            label = f"{value / 60:.1f} min"
+        else:
+            label = f"{value:.2f} s"
+
+        latency_axis.annotate(
+            label,
+            xy=(position, value),
+            xytext=(0, 10),
+            textcoords="offset points",
+            ha="center",
+            fontweight="bold",
+            color=dark_gray,
+        )
+
+    # -------------------------------------------------
+    # 2. Rendimiento
+    # -------------------------------------------------
+    throughput_axis = axes[0, 1]
+
+    throughput_bars = (
+        throughput_axis.bar(
+            positions,
+            throughput,
+            color=medium_blue,
+            edgecolor=dark_gray,
+            linewidth=0.8,
+        )
+    )
+
+    throughput_axis.set_title(
+        "Rendimiento del endpoint",
+        fontweight="bold",
+    )
+
+    throughput_axis.set_xlabel(
+        "Cantidad de publicaciones"
+    )
+
+    throughput_axis.set_ylabel(
+        "Publicaciones explicadas por minuto"
+    )
+
+    throughput_axis.set_xticks(
+        positions,
+        labels=sizes,
+    )
+
+    throughput_axis.grid(
+        axis="y",
+        color=grid_color,
+        linestyle="--",
+        alpha=0.8,
+    )
+
+    throughput_axis.bar_label(
+        throughput_bars,
+        labels=[
+            f"{value:.2f}"
+            for value in throughput
+        ],
+        padding=4,
+        fontweight="bold",
+    )
+
+    # -------------------------------------------------
+    # 3. Tiempo amortizado
+    # -------------------------------------------------
+    amortized_axis = axes[1, 0]
+
+    amortized_bars = (
+        amortized_axis.bar(
+            positions,
+            seconds_per_product,
+            color=dark_blue,
+            edgecolor=dark_gray,
+            linewidth=0.8,
+        )
+    )
+
+    amortized_axis.set_title(
+        "Tiempo promedio amortizado",
+        fontweight="bold",
+    )
+
+    amortized_axis.set_xlabel(
+        "Cantidad de publicaciones"
+    )
+
+    amortized_axis.set_ylabel(
+        "Segundos por publicación"
+    )
+
+    amortized_axis.set_xticks(
+        positions,
+        labels=sizes,
+    )
+
+    amortized_axis.grid(
+        axis="y",
+        color=grid_color,
+        linestyle="--",
+        alpha=0.8,
+    )
+
+    amortized_axis.bar_label(
+        amortized_bars,
+        labels=[
+            f"{value:.3f}"
+            for value in seconds_per_product
+        ],
+        padding=4,
+        fontweight="bold",
+    )
+
+    # -------------------------------------------------
+    # 4. Distribución del tiempo
+    # -------------------------------------------------
+    composition_axis = axes[1, 1]
+
+    composition_axis.bar(
+        positions,
+        shap_percentage,
+        color=dark_blue,
+        edgecolor=dark_gray,
+        linewidth=0.8,
+        label="Kernel SHAP",
+    )
+
+    composition_axis.bar(
+        positions,
+        overhead_percentage,
+        bottom=shap_percentage,
+        color=light_blue,
+        edgecolor=dark_gray,
+        linewidth=0.8,
+        label="API, serialización y comunicación",
+    )
+
+    composition_axis.set_title(
+        "Distribución del tiempo total",
+        fontweight="bold",
+    )
+
+    composition_axis.set_xlabel(
+        "Cantidad de publicaciones"
+    )
+
+    composition_axis.set_ylabel(
+        "Participación en el tiempo total (%)"
+    )
+
+    composition_axis.set_xticks(
+        positions,
+        labels=sizes,
+    )
+
+    composition_axis.set_ylim(
+        0,
+        105,
+    )
+
+    composition_axis.grid(
+        axis="y",
+        color=grid_color,
+        linestyle="--",
+        alpha=0.8,
+    )
+
+    composition_axis.legend(
+        loc="lower right"
+    )
+
+    for position in positions:
+        shap_value = (
+            shap_percentage[position]
+        )
+
+        overhead_value = (
+            overhead_percentage[position]
+        )
+
+        if shap_value >= 4:
+            composition_axis.text(
+                position,
+                shap_value / 2,
+                f"{shap_value:.1f} %",
+                ha="center",
+                va="center",
+                color="white",
+                fontweight="bold",
+            )
+
+        if overhead_value >= 4:
+            composition_axis.text(
+                position,
+                (
+                    shap_value
+                    + overhead_value / 2
+                ),
+                f"{overhead_value:.1f} %",
+                ha="center",
+                va="center",
+                color=dark_gray,
+                fontweight="bold",
+            )
+
+    figure.text(
+        0.5,
+        0.015,
+        (
+            "Los valores corresponden a la mediana de las "
+            "repeticiones. Las barras de error representan "
+            "los tiempos mínimo y máximo observados."
+        ),
+        ha="center",
+        fontsize=12,
+        color="#66727E",
+    )
+
+    figure.tight_layout(
+        rect=[
+            0,
+            0.045,
+            1,
+            0.94,
+        ]
+    )
+
+    figure.savefig(
+        output_path,
+        dpi=300,
+        bbox_inches="tight",
+        facecolor="white",
+    )
+
+    plt.close(figure)
 
 def json_default(value: Any) -> Any:
     if hasattr(value, "item"):
@@ -744,6 +1159,15 @@ def main() -> None:
         index=False,
         encoding="utf-8-sig",
     )
+    figure_path = (
+        arguments.output_directory
+        / "figura_rendimiento_shap.png"
+    )
+
+    generar_figura_rendimiento(
+        summary=summary,
+        output_path=figure_path,
+    )
 
     report = {
         "dataset": {
@@ -763,6 +1187,7 @@ def main() -> None:
             "random_state": (
                 arguments.random_state
             ),
+            "figura": str(figure_path),
         },
         "worker": health,
         "resultados": summary.to_dict(
@@ -787,6 +1212,7 @@ def main() -> None:
     print()
     print(summary.to_string(index=False))
     print()
+    print(f"  {figure_path}")
     print("Archivos generados:")
     print(f"  {metrics_path}")
     print(f"  {summary_path}")

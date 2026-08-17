@@ -5,6 +5,7 @@ from typing import Any, Dict
 
 import requests
 
+from app.ml.assignment.constrained_assignment import MetodoAsignacion
 from app.ml.explainability.surrogate_payload import (
     build_predict_rows_from_request,
     build_train_rows_from_classification,
@@ -93,19 +94,27 @@ def _get_from_worker(
 
 
 def health_explainability_worker() -> Dict[str, Any]:
-    return _get_from_worker("/health")
+    return _get_from_worker(
+        "/health"
+    )
 
 
 def entrenar_surrogate_autosklearn(
     data: Any,
     time_left_for_this_task: int = 600,
     per_run_time_limit: int = 60,
+    metodo_asignacion: MetodoAsignacion = "global",
 ) -> Dict[str, Any]:
     """
-    Ejecuta SS-E-KMeans, utiliza sus categorías como target y entrena
-    el modelo sustituto AutoSklearn.
+    Ejecuta SS-E-KMeans con el método de asignación seleccionado,
+    utiliza sus categorías como target y entrena el modelo sustituto
+    AutoSklearn.
     """
-    clasificacion_result = ejecutar_clasificacion(data)
+    clasificacion_result = ejecutar_clasificacion(
+        data,
+        metodo_asignacion=metodo_asignacion,
+    )
+
     resultados = clasificacion_result.get(
         "resultados",
         [],
@@ -129,7 +138,9 @@ def entrenar_surrogate_autosklearn(
         "time_left_for_this_task": (
             time_left_for_this_task
         ),
-        "per_run_time_limit": per_run_time_limit,
+        "per_run_time_limit": (
+            per_run_time_limit
+        ),
     }
 
     worker_result = _post_to_worker(
@@ -145,6 +156,11 @@ def entrenar_surrogate_autosklearn(
         "mensaje": (
             "Surrogate AutoSklearn entrenado desde "
             "etiquetas SS-E-KMeans"
+        ),
+        "metodo_asignacion_utilizado": (
+            clasificacion_result[
+                "metodo_asignacion_utilizado"
+            ]
         ),
         "diagnostico_clasificacion": (
             clasificacion_result.get(
@@ -174,7 +190,10 @@ def explicar_con_surrogate_autosklearn(
 
     payload = {
         "rows": predict_rows,
-        "top_n": min(top_n, 3),
+        "top_n": min(
+            top_n,
+            3,
+        ),
     }
 
     return _post_to_worker(

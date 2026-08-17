@@ -128,3 +128,41 @@ def test_fit_rejects_fewer_than_four_observations():
 
     with pytest.raises(ValueError, match="al menos 4 observaciones"):
         make_model().fit(X)
+def test_sequential_assignment_runs_and_respects_capacities():
+    model = SSEKMeans(
+        proportions={"A": 0.20, "B": 0.30, "C": 0.50},
+        max_iter=100,
+        tol=1e-6,
+        n_init=5,
+        random_state=42,
+        shuffle_unlabeled=True,
+        metodo_asignacion="secuencial",
+    )
+
+    results = model.fit_predict(clustered_frame())
+
+    assert model.metodo_asignacion == "secuencial"
+
+    assert results["categoria"].value_counts().to_dict() == {
+        "C": 10,
+        "B": 6,
+        "A": 4,
+    }
+
+    assert model.capacities_ == {
+        "A": 4,
+        "B": 6,
+        "C": 10,
+    }
+
+    assert model.counts_ == model.capacities_
+
+
+def test_rejects_invalid_assignment_method():
+    with pytest.raises(
+        ValueError,
+        match="metodo_asignacion",
+    ):
+        SSEKMeans(
+            metodo_asignacion="invalido",
+        )
