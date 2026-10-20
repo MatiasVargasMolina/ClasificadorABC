@@ -21,15 +21,14 @@ def test_preprocessing_service_integrates_validation_transform_and_scaler():
             product("A", 10, 100, 15990),
             product("B", 2, 40, 8990),
             product("C", 0, 5, 4990),
-            product("INVALID", 4, 2, 7990),
+            product("MULTI", 4, 2, 7990),
         ]
     )
     result = ejecutar_preprocesamiento(request)
     assert result["hay_validos"] is True
-    assert len(result["productos_validos"]) == 3
-    assert len(result["productos_invalidos"]) == 1
-    assert result["productos_invalidos"][0]["publication_id"] == "INVALID"
-    assert result["df_transformado"].shape == (3, 6)
+    assert len(result["productos_validos"]) == 4
+    assert result["productos_invalidos"] == []
+    assert result["df_transformado"].shape == (4, 6)
     assert result["X_modelo"].columns.tolist() == [
         "ventas_30d",
         "visitas_30d",
@@ -39,27 +38,14 @@ def test_preprocessing_service_integrates_validation_transform_and_scaler():
     assert result["normalizacion"].n_features_in_ == 3
 
 
-def test_preprocessing_service_returns_explicit_contract_without_valid_rows():
-    request = RequestInput(
-        productos=[
-            product("INVALID", 5, 2, 7990),
-        ]
-    )
+def test_preprocessing_retains_units_above_visits_without_altering_counts():
+    request = RequestInput(productos=[
+        product("MULTI", 2, 1, 7990),
+        product("ZERO_VISITS", 2, 0, 5990),
+    ])
     result = ejecutar_preprocesamiento(request)
-    assert result == {
-        "hay_validos": False,
-        "mensaje": "No hay productos válidos para clasificar",
-        "productos_validos": [],
-        "productos_invalidos": [
-            {
-                "publication_id": "INVALID",
-                "errores": [
-                    "inconsistencia: visitas_30d menores que ventas_30d"
-                ],
-            }
-        ],
-        "df_transformado": None,
-        "X": None,
-        "X_modelo": None,
-        "normalizacion": None,
-    }
+    assert result['hay_validos'] is True
+    assert result['productos_invalidos'] == []
+    assert result['X']['ventas_30d'].tolist() == [2, 2]
+    assert result['X']['visitas_30d'].tolist() == [1, 0]
+    assert np.isfinite(result['X_modelo'].to_numpy()).all()
