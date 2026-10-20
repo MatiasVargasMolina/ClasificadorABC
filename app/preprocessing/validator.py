@@ -2,15 +2,12 @@ from typing import Any, List, Dict
 
 
 def validar_producto(producto: Any) -> List[str]:
-    errores = []
+    """Recibe productos cuyos campos y rangos ya validó ProductoInput.
 
-    if producto.ventas_30d > 0 and producto.visitas_30d == 0:
-        errores.append("inconsistencia: ventas_30d > 0 pero visitas_30d = 0")
-
-    if producto.visitas_30d < producto.ventas_30d:
-        errores.append("inconsistencia: visitas_30d menores que ventas_30d")
-
-    return errores
+    Las unidades vendidas y las visitas cuentan eventos diferentes;
+    su relación no constituye un criterio de rechazo.
+    """
+    return []
 
 
 def validar_productos(productos: List[Any]) -> Dict[str, List[Any]]:
